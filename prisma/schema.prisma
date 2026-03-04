@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id             String          @id @default(cuid())
+  name           String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  users          User[]
+  patients       Patient[]
+  appointments   Appointment[]
+  encounters     Encounter[]
+  tasks          Task[]
+  communications Communication[]
+  auditLogs      AuditLog[]
+  roles          Role[]
+}
+
+model User {
+  id                     String        @id @default(cuid())
+  organizationId         String
+  organization           Organization  @relation(fields: [organizationId], references: [id])
+  email                  String        @unique
+  name                   String?
+  passwordHash           String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  userRoles              UserRole[]
+  appointmentsAsProvider Appointment[] @relation("ProviderAppointments")
+  tasksAssigned          Task[]        @relation("AssignedTasks")
+  tasksCreated           Task[]        @relation("CreatedTasks")
+  auditLogs              AuditLog[]
+}
+
+model Role {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  name           String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  permissions    RolePermission[]
+  userRoles      UserRole[]
+}
+
+model RolePermission {
+  id        String   @id @default(cuid())
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  action    String
+  createdAt DateTime @default(now())
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Patient {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  firstName      String
+  lastName       String
+  dateOfBirth    DateTime?
+  email          String?
+  phone          String?
+  address        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  appointments   Appointment[]
+  encounters     Encounter[]
+  tasks          Task[]
+  communications Communication[]
+  consents       Consent[]
+}
+
+model Appointment {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  patientId      String
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  providerId     String
+  provider       User          @relation("ProviderAppointments", fields: [providerId], references: [id])
+  startTime      DateTime
+  endTime        DateTime
+  status         String
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  encounter      Encounter?
+}
+
+model Encounter {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  patientId      String
+  patient        Patient         @relation(fields: [patientId], references: [id])
+  appointmentId  String?         @unique
+  appointment    Appointment?    @relation(fields: [appointmentId], references: [id])
+  startTime      DateTime
+  endTime        DateTime?
+  status         String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  notes          EncounterNote[]
+}
+
+model EncounterNote {
+  id          String    @id @default(cuid())
+  encounterId String
+  encounter   Encounter @relation(fields: [encounterId], references: [id])
+  text        String
+  authorId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  title          String
+  description    String?
+  status         String
+  dueDate        DateTime?
+  patientId      String?
+  patient        Patient?     @relation(fields: [patientId], references: [id])
+  assigneeId     String?
+  assignee       User?        @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  creatorId      String
+  creator        User         @relation("CreatedTasks", fields: [creatorId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Communication {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  type           String
+  status         String
+  content        String
+  scheduledFor   DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  action         String
+  entityType     String
+  entityId       String
+  details        String?
+  createdAt      DateTime     @default(now())
+}
+
+model Consent {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  consentType String
+  isGranted   Boolean  @default(true)
+  documentUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
