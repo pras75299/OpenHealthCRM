@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, Plus, Filter as FilterIcon, Download } from "lucide-react"
+import { Plus, Filter as FilterIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,10 +16,6 @@ import {
 } from "@/components/ui/dialog"
 import {
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
 import {
@@ -32,9 +28,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { useMedical, Patient } from "@/context/MedicalContext"
+import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet"
 
 export default function PatientsPage() {
   const [open, setOpen] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState("")
   const { patients, addPatient } = useMedical()
 
   const handleAddPatient = (e: React.FormEvent<HTMLFormElement>) => {
@@ -69,7 +67,7 @@ export default function PatientsPage() {
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 mb-1">Patients</h2>
-          <p className="text-sm text-neutral-500">Manage your clinic's patients, medical histories, and health records.</p>
+          <p className="text-sm text-neutral-500">Manage your clinic&apos;s patients, medical histories, and health records.</p>
         </div>
         
         <Dialog open={open} onOpenChange={setOpen}>
@@ -84,7 +82,7 @@ export default function PatientsPage() {
               <DialogHeader>
                 <DialogTitle>Add New Patient</DialogTitle>
                 <DialogDescription>
-                  Enter the patient's basic information to register them in the system.
+                  Enter the patient&apos;s basic information to register them in the system.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -128,6 +126,8 @@ export default function PatientsPage() {
                 type="search" 
                 placeholder="Search MRN, Name, or Phone..."
                 className="w-full sm:max-w-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
              />
              <div className="flex gap-2">
                  <DropdownMenu>
@@ -163,7 +163,17 @@ export default function PatientsPage() {
                      </tr>
                  </thead>
                  <tbody className="divide-y text-neutral-800 dark:text-neutral-200">
-                     {patients.map((patient: Patient) => (
+                     {patients
+                       .filter(patient => {
+                         const searchStr = searchQuery.toLowerCase();
+                         return (
+                           patient.firstName.toLowerCase().includes(searchStr) ||
+                           patient.lastName.toLowerCase().includes(searchStr) ||
+                           patient.mrn.toLowerCase().includes(searchStr) ||
+                           patient.phone.includes(searchStr)
+                         );
+                       })
+                       .map((patient: Patient) => (
                          <tr key={patient.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -194,50 +204,7 @@ export default function PatientsPage() {
                                  <SheetTrigger asChild>
                                    <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto">Manage</Button>
                                  </SheetTrigger>
-                                 <SheetContent className="overflow-y-auto">
-                                   <SheetHeader>
-                                     <SheetTitle>Patient Profile</SheetTitle>
-                                     <SheetDescription>
-                                       Detailed medical and contact information for {patient.firstName} {patient.lastName}.
-                                     </SheetDescription>
-                                   </SheetHeader>
-                                   <div className="py-6 flex flex-col gap-6">
-                                       <div className="flex items-center gap-4">
-                                          <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center">
-                                            {patient.firstName[0]}{patient.lastName[0]}
-                                          </div>
-                                          <div>
-                                            <h3 className="text-lg font-bold">{patient.firstName} {patient.lastName}</h3>
-                                            <p className="text-sm text-neutral-500">{patient.mrn} • {patient.gender}</p>
-                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
-                                              {patient.status}
-                                            </span>
-                                          </div>
-                                       </div>
-                                       
-                                       <div className="space-y-3">
-                                           <h4 className="font-semibold text-sm uppercase text-neutral-500">Contact Information</h4>
-                                           <div className="grid grid-cols-2 gap-2 text-sm">
-                                               <div className="text-neutral-500">Phone:</div><div>{patient.phone}</div>
-                                               <div className="text-neutral-500">Email:</div><div>{patient.email || "N/A"}</div>
-                                               <div className="text-neutral-500">Address:</div><div>{patient.address || "N/A"}</div>
-                                           </div>
-                                       </div>
-                                       
-                                       <div className="space-y-3">
-                                           <h4 className="font-semibold text-sm uppercase text-neutral-500">Medical Summary</h4>
-                                           <div className="grid grid-cols-2 gap-2 text-sm">
-                                               <div className="text-neutral-500">Blood Type:</div><div>{patient.bloodType}</div>
-                                               <div className="text-neutral-500">Allergies:</div><div>{patient.allergies}</div>
-                                               <div className="text-neutral-500">Primary Care:</div><div>{patient.primaryCare}</div>
-                                           </div>
-                                       </div>
-                                       
-                                       <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4">
-                                           Update Medical Record
-                                       </Button>
-                                   </div>
-                                 </SheetContent>
+                                 <PatientProfileSheet patient={patient} />
                                </Sheet>
                              </td>
                          </tr>

@@ -17,15 +17,12 @@ import {
 } from "@/components/ui/dialog"
 import {
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { toast } from "sonner"
 
 import { useMedical, Patient } from "@/context/MedicalContext"
+import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet"
 
 export default function DashboardPage() {
   const [openAdd, setOpenAdd] = React.useState(false)
@@ -189,50 +186,7 @@ export default function DashboardPage() {
                           View Profile <span aria-hidden="true" className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                         </Button>
                       </SheetTrigger>
-                      <SheetContent className="overflow-y-auto">
-                        <SheetHeader>
-                          <SheetTitle>Patient Profile</SheetTitle>
-                          <SheetDescription>
-                            Detailed medical and contact information for {patient.firstName} {patient.lastName}.
-                          </SheetDescription>
-                        </SheetHeader>
-                        <div className="py-6 flex flex-col gap-6">
-                            <div className="flex items-center gap-4">
-                               <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center">
-                                 {patient.firstName[0]}{patient.lastName[0]}
-                               </div>
-                               <div>
-                                 <h3 className="text-lg font-bold">{patient.firstName} {patient.lastName}</h3>
-                                 <p className="text-sm text-neutral-500">{patient.mrn} • {patient.gender}</p>
-                                 <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
-                                  {patient.status}
-                                 </span>
-                               </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                <h4 className="font-semibold text-sm uppercase text-neutral-500">Contact Information</h4>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div className="text-neutral-500">Phone:</div><div>{patient.phone}</div>
-                                    <div className="text-neutral-500">Email:</div><div>{patient.email || "N/A"}</div>
-                                    <div className="text-neutral-500">Address:</div><div>{patient.address || "N/A"}</div>
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-3">
-                                <h4 className="font-semibold text-sm uppercase text-neutral-500">Medical Summary</h4>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div className="text-neutral-500">Blood Type:</div><div>{patient.bloodType}</div>
-                                    <div className="text-neutral-500">Allergies:</div><div>{patient.allergies}</div>
-                                    <div className="text-neutral-500">Primary Care:</div><div>{patient.primaryCare}</div>
-                                </div>
-                            </div>
-                            
-                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4">
-                                Book New Appointment
-                            </Button>
-                        </div>
-                      </SheetContent>
+                      <PatientProfileSheet patient={patient} />
                     </Sheet>
                   </td>
                 </tr>

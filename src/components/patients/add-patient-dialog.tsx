@@ -52,7 +52,7 @@ export function AddPatientDialog() {
         <DialogHeader>
           <DialogTitle>Add Patient</DialogTitle>
           <DialogDescription>
-            Enter the patient's details here. Click save when you're done.
+            Enter the patient&apos;s details here. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
         <form action={clientAction}>

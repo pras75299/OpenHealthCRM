@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
-import { useMedical, Appointment, Patient } from "@/context/MedicalContext"
+import { useMedical, Appointment } from "@/context/MedicalContext"
 
 export default function AppointmentsPage() {
   const [open, setOpen] = React.useState(false)
@@ -221,7 +221,7 @@ export default function AppointmentsPage() {
                                             <DialogHeader>
                                                 <DialogTitle>Edit Appointment</DialogTitle>
                                                 <DialogDescription>
-                                                Update details for {patientName}'s appointment.
+                                                Update details for {patientName}&apos;s appointment.
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <div className="grid gap-4 py-4">
