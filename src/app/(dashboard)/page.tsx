@@ -1,7 +1,59 @@
+"use client"
+
 import * as React from "react"
-import { Users, Calendar, Activity, Clock } from "lucide-react"
+import { motion } from "framer-motion"
+import { Users, Calendar, Activity, Clock, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { toast } from "sonner"
+
+import { useMedical, Patient } from "@/context/MedicalContext"
 
 export default function DashboardPage() {
+  const [openAdd, setOpenAdd] = React.useState(false)
+  const { patients, addPatient } = useMedical()
+
+  const handleAddPatient = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    addPatient({
+      firstName: formData.get("firstName") as string,
+      lastName: formData.get("lastName") as string,
+      dob: "1990-01-01", // Placeholder
+      phone: formData.get("phone") as string,
+      status: "Active",
+      email: "",
+      address: "",
+      gender: "Unknown",
+      bloodType: "Unknown",
+      allergies: "None",
+      primaryCare: "Unassigned",
+      lastVisit: new Date().toISOString().split("T")[0]
+    })
+    
+    setOpenAdd(false)
+    toast.success("Patient added successfully!")
+  }
+
   const stats = [
     { name: "Total Patients", value: "2,400", change: "+12%", icon: Users },
     { name: "Appointments Today", value: "32", change: "+4%", icon: Calendar },
@@ -9,44 +61,108 @@ export default function DashboardPage() {
     { name: "Avg Wait Time", value: "14 min", change: "-2%", icon: Clock },
   ]
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+  }
+
   return (
-    <div className="flex flex-col gap-8 w-full">
+    <motion.div 
+      className="flex flex-col gap-8 w-full"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
       
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white dark:bg-neutral-900 border rounded-xl p-5 shadow-sm">
-            <div className="flex justify-between items-start">
+          <motion.div 
+            variants={itemVariants}
+            key={idx} 
+            className="relative overflow-hidden bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-transparent dark:from-indigo-950/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative flex justify-between items-start">
               <div>
-                <p className="text-neutral-500 text-sm font-medium">{stat.name}</p>
-                <h3 className="text-2xl font-bold mt-2 text-neutral-900 dark:text-neutral-50">{stat.value}</h3>
+                <p className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">{stat.name}</p>
+                <h3 className="text-3xl font-bold mt-2 text-neutral-900 dark:text-neutral-50 tracking-tight">{stat.value}</h3>
               </div>
-              <div className="p-2 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
-                <stat.icon className="w-5 h-5 text-neutral-700 dark:text-neutral-300" />
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                <stat.icon className="w-5 h-5" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm">
-              <span className={`font-medium ${stat.change.startsWith("+") ? "text-green-600" : "text-emerald-600"}`}>
+            <div className="relative mt-4 flex items-center text-sm">
+              <span className={`font-medium px-2 py-0.5 rounded-full ${stat.change.startsWith("+") ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"}`}>
                 {stat.change}
               </span>
               <span className="text-neutral-500 ml-2">from last month</span>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Patient List Section */}
-      <div className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm flex-1">
-        <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">Recent Patients</h2>
-          <button className="bg-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-800 transition">
-            Add Patient
-          </button>
+      <motion.div variants={itemVariants} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-sm flex-1 overflow-hidden">
+        <div className="p-6 border-b border-neutral-200/50 dark:border-neutral-800/50 flex justify-between items-center bg-white/40 dark:bg-neutral-950/40">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">Recent Patients</h2>
+          
+          <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+            <DialogTrigger asChild>
+              <Button className="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20 text-white shadow-sm transition-all rounded-xl">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Patient
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <form onSubmit={handleAddPatient}>
+                <DialogHeader>
+                  <DialogTitle>Add New Patient</DialogTitle>
+                  <DialogDescription>
+                    Enter the patient&apos;s basic information to register them in the system.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="firstName" className="text-right">
+                      First Name
+                    </Label>
+                    <Input id="firstName" name="firstName" placeholder="Jane" className="col-span-3" required />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="lastName" className="text-right">
+                      Last Name
+                    </Label>
+                    <Input id="lastName" name="lastName" placeholder="Doe" className="col-span-3" required />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="phone" className="text-right">
+                      Phone
+                    </Label>
+                    <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="col-span-3" required />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setOpenAdd(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Patient</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
         </div>
         
         <div className="p-0 overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 font-medium">
+            <thead className="bg-neutral-50/50 dark:bg-neutral-800/30 text-neutral-500 dark:text-neutral-400 font-medium">
               <tr>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">ID / MRN</th>
@@ -55,27 +171,78 @@ export default function DashboardPage() {
                 <th className="px-6 py-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y text-neutral-800 dark:text-neutral-200">
-              {[1, 2, 3, 4, 5].map((item) => (
-                <tr key={item} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
-                  <td className="px-6 py-4 font-medium">Jane Doe</td>
-                  <td className="px-6 py-4 text-neutral-500">MRN-7890{item}</td>
-                  <td className="px-6 py-4">Oct 24, 2026</td>
+            <tbody className="divide-y divide-neutral-200/50 dark:divide-neutral-800/50 text-neutral-800 dark:text-neutral-200">
+              {patients.slice(0, 5).map((patient: Patient) => (
+                <tr key={patient.id} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors group">
+                  <td className="px-6 py-4 font-medium">{patient.firstName} {patient.lastName}</td>
+                  <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">{patient.mrn}</td>
+                  <td className="px-6 py-4">{new Date(patient.lastVisit).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                      Active
+                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full text-xs font-semibold tracking-wide border border-emerald-200/50 dark:border-emerald-800/50">
+                      {patient.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <button className="text-blue-600 hover:underline">View Profile</button>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="link" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:no-underline p-0 h-auto font-semibold group-hover:translate-x-1 transition-transform">
+                          View Profile <span aria-hidden="true" className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent className="overflow-y-auto">
+                        <SheetHeader>
+                          <SheetTitle>Patient Profile</SheetTitle>
+                          <SheetDescription>
+                            Detailed medical and contact information for {patient.firstName} {patient.lastName}.
+                          </SheetDescription>
+                        </SheetHeader>
+                        <div className="py-6 flex flex-col gap-6">
+                            <div className="flex items-center gap-4">
+                               <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center">
+                                 {patient.firstName[0]}{patient.lastName[0]}
+                               </div>
+                               <div>
+                                 <h3 className="text-lg font-bold">{patient.firstName} {patient.lastName}</h3>
+                                 <p className="text-sm text-neutral-500">{patient.mrn} • {patient.gender}</p>
+                                 <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
+                                  {patient.status}
+                                 </span>
+                               </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <h4 className="font-semibold text-sm uppercase text-neutral-500">Contact Information</h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="text-neutral-500">Phone:</div><div>{patient.phone}</div>
+                                    <div className="text-neutral-500">Email:</div><div>{patient.email || "N/A"}</div>
+                                    <div className="text-neutral-500">Address:</div><div>{patient.address || "N/A"}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <h4 className="font-semibold text-sm uppercase text-neutral-500">Medical Summary</h4>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="text-neutral-500">Blood Type:</div><div>{patient.bloodType}</div>
+                                    <div className="text-neutral-500">Allergies:</div><div>{patient.allergies}</div>
+                                    <div className="text-neutral-500">Primary Care:</div><div>{patient.primaryCare}</div>
+                                </div>
+                            </div>
+                            
+                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4">
+                                Book New Appointment
+                            </Button>
+                        </div>
+                      </SheetContent>
+                    </Sheet>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
       
-    </div>
+    </motion.div>
   )
 }
+

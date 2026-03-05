@@ -23,21 +23,51 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
+import { useMedical, Appointment, Patient } from "@/context/MedicalContext"
+
 export default function AppointmentsPage() {
   const [open, setOpen] = React.useState(false)
+  const { appointments, patients, addAppointment, updateAppointment } = useMedical()
 
-  const handleBook = (e: React.FormEvent) => {
+  const handleBook = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    addAppointment({
+      patientId: formData.get("patientId") as string,
+      provider: formData.get("provider") as string,
+      date: formData.get("date") as string,
+      time: formData.get("time") as string,
+      type: formData.get("type") as string,
+      duration: "30 min",
+      status: "Scheduled"
+    })
+    
     setOpen(false)
     toast.success("Appointment booked successfully!")
   }
 
-  const appointments = [
-    { id: 1, patient: "Sarah Miller", time: "09:00 AM", duration: "30 min", type: "Follow-up", provider: "Dr. Jane Smith", status: "Confirmed" },
-    { id: 2, patient: "John Davis", time: "10:00 AM", duration: "60 min", type: "New Patient", provider: "Dr. Jane Smith", status: "In Waiting Room" },
-    { id: 3, patient: "Maria Garcia", time: "11:30 AM", duration: "30 min", type: "Lab Results", provider: "Dr. Robert Chen", status: "Scheduled" },
-    { id: 4, patient: "James Wilson", time: "01:00 PM", duration: "45 min", type: "Consultation", provider: "Dr. Jane Smith", status: "Pending" },
-  ]
+  const handleEdit = (id: string, e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    const rawStatus = formData.get("status") as string
+    const statusMap: Record<string, Appointment["status"]> = {
+        "scheduled": "Scheduled",
+        "confirmed": "Confirmed",
+        "waiting": "In Waiting Room",
+        "pending": "Pending"
+    }
+
+    updateAppointment(id, {
+        provider: formData.get("provider") as string,
+        date: formData.get("date") as string,
+        time: formData.get("time") as string,
+        status: statusMap[rawStatus] || "Pending"
+    })
+    
+    toast.success("Appointment updated successfully!")
+  }
 
   return (
     <div className="flex flex-col gap-6 w-full h-full">
@@ -64,50 +94,50 @@ export default function AppointmentsPage() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="patient">Patient</Label>
-                  <Select required>
+                  <Label htmlFor="patientId">Patient</Label>
+                  <Select name="patientId" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a patient" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sarah_miller">Sarah Miller</SelectItem>
-                      <SelectItem value="john_davis">John Davis</SelectItem>
-                      <SelectItem value="maria_garcia">Maria Garcia</SelectItem>
+                      {patients.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="provider">Provider</Label>
-                  <Select required>
+                  <Select name="provider" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a provider" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="dr_smith">Dr. Jane Smith</SelectItem>
-                      <SelectItem value="dr_chen">Dr. Robert Chen</SelectItem>
+                      <SelectItem value="Dr. Jane Smith">Dr. Jane Smith</SelectItem>
+                      <SelectItem value="Dr. Robert Chen">Dr. Robert Chen</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="date">Date</Label>
-                    <Input id="date" type="date" required />
+                    <Input id="date" name="date" type="date" required />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="time">Time</Label>
-                    <Input id="time" type="time" required />
+                    <Input id="time" name="time" type="time" required />
                   </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="type">Type</Label>
-                  <Select required>
+                  <Select name="type" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Appointment type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="follow_up">Follow-up</SelectItem>
-                      <SelectItem value="consultation">Consultation</SelectItem>
-                      <SelectItem value="new_patient">New Patient</SelectItem>
+                      <SelectItem value="Follow-up">Follow-up</SelectItem>
+                      <SelectItem value="Consultation">Consultation</SelectItem>
+                      <SelectItem value="New Patient">New Patient</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -152,7 +182,10 @@ export default function AppointmentsPage() {
                      </tr>
                  </thead>
                  <tbody className="divide-y text-neutral-800 dark:text-neutral-200">
-                     {appointments.map((apt) => (
+                     {appointments.map((apt: Appointment) => {
+                         const patient = patients.find(p => p.id === apt.patientId);
+                         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
+                         return (
                          <tr key={apt.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
                              <td className="px-6 py-4">
                                 <div className="font-medium">{apt.time}</div>
@@ -160,7 +193,7 @@ export default function AppointmentsPage() {
                                     <Clock className="w-3 h-3 mr-1" /> {apt.duration}
                                 </div>
                              </td>
-                             <td className="px-6 py-4 font-medium">{apt.patient}</td>
+                             <td className="px-6 py-4 font-medium">{patientName}</td>
                              <td className="px-6 py-4">{apt.type}</td>
                              <td className="px-6 py-4 hidden md:table-cell text-neutral-500">{apt.provider}</td>
                              <td className="px-6 py-4">
@@ -174,11 +207,79 @@ export default function AppointmentsPage() {
                                </span>
                              </td>
                              <td className="px-6 py-4">
-                                 <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto mr-3">Edit</Button>
-                                 <Button variant="link" className="text-neutral-400 hover:text-red-600 p-0 h-auto">Cancel</Button>
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto mr-3">Edit</Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <form onSubmit={(e) => {
+                                            const form = e.target as HTMLFormElement;
+                                            const closeBtn = form.querySelector('[data-dialog-close]') as HTMLButtonElement;
+                                            if (closeBtn) closeBtn.click();
+                                            handleEdit(apt.id, e);
+                                        }}>
+                                            <DialogHeader>
+                                                <DialogTitle>Edit Appointment</DialogTitle>
+                                                <DialogDescription>
+                                                Update details for {patientName}'s appointment.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor={`provider-${apt.id}`}>Provider</Label>
+                                                    <Select name="provider" defaultValue={apt.provider}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a provider" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Dr. Jane Smith">Dr. Jane Smith</SelectItem>
+                                                            <SelectItem value="Dr. Robert Chen">Dr. Robert Chen</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor={`date-${apt.id}`}>Date</Label>
+                                                        <Input id={`date-${apt.id}`} name="date" type="date" defaultValue={apt.date} required />
+                                                    </div>
+                                                    <div className="grid gap-2">
+                                                        <Label htmlFor={`time-${apt.id}`}>Time</Label>
+                                                        <Input id={`time-${apt.id}`} name="time" type="time" defaultValue={apt.time.includes("AM") ? apt.time.replace(" AM", "") : apt.time.replace(" PM", "")} required />
+                                                    </div>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor={`status-${apt.id}`}>Status</Label>
+                                                    <Select name="status" defaultValue={
+                                                        apt.status === "Confirmed" ? "confirmed" : 
+                                                        apt.status === "In Waiting Room" ? "waiting" : 
+                                                        apt.status === "Scheduled" ? "scheduled" : "pending"}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Appointment status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="scheduled">Scheduled</SelectItem>
+                                                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                                                            <SelectItem value="waiting">In Waiting Room</SelectItem>
+                                                            <SelectItem value="pending">Pending</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                {/* Hidden close button to trigger close on submit */}
+                                                <Button type="button" data-dialog-close variant="outline" className="hidden">Cancel</Button>
+                                                <DialogTrigger asChild>
+                                                    <Button type="button" variant="outline">Cancel</Button>
+                                                </DialogTrigger>
+                                                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Changes</Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                                <Button variant="link" className="text-neutral-400 hover:text-red-600 p-0 h-auto" onClick={() => toast.success("Appointment cancelled!")}>Cancel</Button>
                              </td>
                          </tr>
-                     ))}
+                     )})}
                  </tbody>
              </table>
          </div>
@@ -186,3 +287,4 @@ export default function AppointmentsPage() {
     </div>
   )
 }
+

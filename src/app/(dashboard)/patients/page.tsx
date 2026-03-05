@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Users, Plus } from "lucide-react"
+import { Users, Plus, Filter as FilterIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,15 +14,54 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { useMedical, Patient } from "@/context/MedicalContext"
 
 export default function PatientsPage() {
   const [open, setOpen] = React.useState(false)
+  const { patients, addPatient } = useMedical()
 
-  const handleAddPatient = (e: React.FormEvent) => {
+  const handleAddPatient = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    addPatient({
+      firstName: formData.get("firstName") as string,
+      lastName: formData.get("lastName") as string,
+      dob: formData.get("dob") as string,
+      phone: formData.get("phone") as string,
+      status: "Active",
+      email: "",
+      address: "",
+      gender: "Unknown",
+      bloodType: "Unknown",
+      allergies: "None",
+      primaryCare: "Unassigned",
+      lastVisit: new Date().toISOString().split("T")[0]
+    })
+    
     setOpen(false)
     toast.success("Patient added successfully!")
+  }
+
+  const handleExport = () => {
+    toast.success("Exporting patient list to CSV...")
   }
 
   return (
@@ -53,25 +92,25 @@ export default function PatientsPage() {
                   <Label htmlFor="firstName" className="text-right">
                     First Name
                   </Label>
-                  <Input id="firstName" placeholder="Jane" className="col-span-3" required />
+                  <Input id="firstName" name="firstName" placeholder="Jane" className="col-span-3" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="lastName" className="text-right">
                     Last Name
                   </Label>
-                  <Input id="lastName" placeholder="Doe" className="col-span-3" required />
+                  <Input id="lastName" name="lastName" placeholder="Doe" className="col-span-3" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="dob" className="text-right">
                     DOB
                   </Label>
-                  <Input id="dob" type="date" className="col-span-3" required />
+                  <Input id="dob" name="dob" type="date" className="col-span-3" required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="phone" className="text-right">
                     Phone
                   </Label>
-                  <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" className="col-span-3" required />
+                  <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="col-span-3" required />
                 </div>
               </div>
               <DialogFooter>
@@ -83,16 +122,32 @@ export default function PatientsPage() {
         </Dialog>
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 border rounded-xl flex-1 shadow-sm">
-         <div className="p-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-neutral-900 border rounded-xl flex-1 shadow-sm flex flex-col pt-2">
+         <div className="px-6 py-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
              <Input 
                 type="search" 
                 placeholder="Search MRN, Name, or Phone..."
                 className="w-full sm:max-w-sm"
              />
              <div className="flex gap-2">
-                 <Button variant="outline" size="sm">Filter</Button>
-                 <Button variant="outline" size="sm">Export</Button>
+                 <DropdownMenu>
+                   <DropdownMenuTrigger asChild>
+                     <Button variant="outline" size="sm" className="flex items-center gap-2">
+                       <FilterIcon className="w-4 h-4" /> Filter
+                     </Button>
+                   </DropdownMenuTrigger>
+                   <DropdownMenuContent align="end" className="w-48">
+                     <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                     <DropdownMenuSeparator />
+                     <DropdownMenuCheckboxItem checked>Active</DropdownMenuCheckboxItem>
+                     <DropdownMenuCheckboxItem>Inactive</DropdownMenuCheckboxItem>
+                     <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
+                   </DropdownMenuContent>
+                 </DropdownMenu>
+
+                 <Button variant="outline" size="sm" onClick={handleExport} className="flex items-center gap-2">
+                   <Download className="w-4 h-4" /> Export
+                 </Button>
              </div>
          </div>
          <div className="p-0 overflow-x-auto">
@@ -108,30 +163,82 @@ export default function PatientsPage() {
                      </tr>
                  </thead>
                  <tbody className="divide-y text-neutral-800 dark:text-neutral-200">
-                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                         <tr key={i} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
+                     {patients.map((patient: Patient) => (
+                         <tr key={patient.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex justify-center items-center text-xs">SM</div>
+                                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex justify-center items-center text-xs">
+                                     {patient.firstName[0]}{patient.lastName[0]}
+                                   </div>
                                    <div>
-                                     <p className="font-medium">Sarah Miller</p>
-                                     <p className="text-xs text-neutral-500">32F • DOB: 05/12/1994</p>
+                                     <p className="font-medium">{patient.firstName} {patient.lastName}</p>
+                                     <p className="text-xs text-neutral-500">
+                                       DOB: {new Date(patient.dob).toLocaleDateString()}
+                                     </p>
                                    </div>
                                 </div>
                              </td>
-                             <td className="px-6 py-4 font-mono text-xs text-neutral-500">PT-8942{i}</td>
+                             <td className="px-6 py-4 font-mono text-xs text-neutral-500">{patient.mrn}</td>
                              <td className="px-6 py-4">
                                  <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
-                                     Active
+                                     {patient.status}
                                  </span>
                              </td>
                              <td className="px-6 py-4">
-                               <p className="text-xs">+1 (555) 123-4567</p>
-                               <p className="text-xs text-neutral-500">sarah.m@example.com</p>
+                               <p className="text-xs">{patient.phone}</p>
+                               <p className="text-xs text-neutral-500">{patient.email}</p>
                              </td>
-                             <td className="px-6 py-4 text-neutral-500 hidden md:table-cell">Jan 12, 2026</td>
+                             <td className="px-6 py-4 text-neutral-500 hidden md:table-cell">{new Date(patient.regDate).toLocaleDateString()}</td>
                              <td className="px-6 py-4">
-                                 <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto">Manage</Button>
+                               <Sheet>
+                                 <SheetTrigger asChild>
+                                   <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto">Manage</Button>
+                                 </SheetTrigger>
+                                 <SheetContent className="overflow-y-auto">
+                                   <SheetHeader>
+                                     <SheetTitle>Patient Profile</SheetTitle>
+                                     <SheetDescription>
+                                       Detailed medical and contact information for {patient.firstName} {patient.lastName}.
+                                     </SheetDescription>
+                                   </SheetHeader>
+                                   <div className="py-6 flex flex-col gap-6">
+                                       <div className="flex items-center gap-4">
+                                          <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 text-xl font-bold flex items-center justify-center">
+                                            {patient.firstName[0]}{patient.lastName[0]}
+                                          </div>
+                                          <div>
+                                            <h3 className="text-lg font-bold">{patient.firstName} {patient.lastName}</h3>
+                                            <p className="text-sm text-neutral-500">{patient.mrn} • {patient.gender}</p>
+                                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
+                                              {patient.status}
+                                            </span>
+                                          </div>
+                                       </div>
+                                       
+                                       <div className="space-y-3">
+                                           <h4 className="font-semibold text-sm uppercase text-neutral-500">Contact Information</h4>
+                                           <div className="grid grid-cols-2 gap-2 text-sm">
+                                               <div className="text-neutral-500">Phone:</div><div>{patient.phone}</div>
+                                               <div className="text-neutral-500">Email:</div><div>{patient.email || "N/A"}</div>
+                                               <div className="text-neutral-500">Address:</div><div>{patient.address || "N/A"}</div>
+                                           </div>
+                                       </div>
+                                       
+                                       <div className="space-y-3">
+                                           <h4 className="font-semibold text-sm uppercase text-neutral-500">Medical Summary</h4>
+                                           <div className="grid grid-cols-2 gap-2 text-sm">
+                                               <div className="text-neutral-500">Blood Type:</div><div>{patient.bloodType}</div>
+                                               <div className="text-neutral-500">Allergies:</div><div>{patient.allergies}</div>
+                                               <div className="text-neutral-500">Primary Care:</div><div>{patient.primaryCare}</div>
+                                           </div>
+                                       </div>
+                                       
+                                       <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-4">
+                                           Update Medical Record
+                                       </Button>
+                                   </div>
+                                 </SheetContent>
+                               </Sheet>
                              </td>
                          </tr>
                      ))}
@@ -142,3 +249,4 @@ export default function PatientsPage() {
     </div>
   )
 }
+
