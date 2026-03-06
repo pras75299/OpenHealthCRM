@@ -23,24 +23,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           HealthCRM
         </div>
         <nav className="flex-1 p-4 flex flex-col gap-1">
-          <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
             <LayoutDashboard className="w-4 h-4"/> Dashboard
           </Link>
-          <Link href="/patients" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <Link href="/patients" className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
             <Users className="w-4 h-4"/> Patients
           </Link>
-          <Link href="/appointments" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <Link href="/appointments" className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
             <Calendar className="w-4 h-4"/> Appointments
           </Link>
-          <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:shadow-sm hover:-translate-y-0.5 transition-all text-sm font-medium text-neutral-700 dark:text-neutral-300">
             <Settings className="w-4 h-4"/> Settings
           </Link>
         </nav>
         <div className="p-4 border-t">
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full">
-              <div className="flex items-center gap-3 w-full hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 p-2 rounded-lg transition-all text-left group">
-                 <div className="w-8 h-8 rounded-full bg-indigo-100 group-hover:bg-indigo-200 text-indigo-700 flex justify-center items-center text-sm font-bold shrink-0 transition-colors">
+              <div className="flex items-center gap-3 w-full hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 p-2 rounded-[5px] transition-all text-left group">
+                 <div className="w-8 h-8 rounded-[5px] bg-indigo-100 group-hover:bg-indigo-200 text-indigo-700 flex justify-center items-center text-sm font-bold shrink-0 transition-colors">
                     DR
                  </div>
                  <div className="text-sm dark:text-neutral-300 flex-1 overflow-hidden">
