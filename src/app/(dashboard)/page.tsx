@@ -2,54 +2,19 @@
 
 import * as React from "react"
 import { motion } from "framer-motion"
-import { Users, Calendar, Activity, Clock, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Users, Calendar, Activity, Clock } from "lucide-react"
 import {
   Sheet,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 
 import { useMedical, Patient } from "@/context/MedicalContext"
 import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet"
+import { AddPatientDialog } from "@/components/patients/add-patient-dialog"
 
 export default function DashboardPage() {
-  const [openAdd, setOpenAdd] = React.useState(false)
-  const { patients, addPatient } = useMedical()
-
-  const handleAddPatient = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    
-    addPatient({
-      firstName: formData.get("firstName") as string,
-      lastName: formData.get("lastName") as string,
-      dob: "1990-01-01", // Placeholder
-      phone: formData.get("phone") as string,
-      status: "Active",
-      email: "",
-      address: "",
-      gender: "Unknown",
-      bloodType: "Unknown",
-      allergies: "None",
-      primaryCare: "Unassigned",
-      lastVisit: new Date().toISOString().split("T")[0]
-    })
-    
-    setOpenAdd(false)
-    toast.success("Patient added successfully!")
-  }
+  const { patients, refetchPatients } = useMedical()
 
   const stats = [
     { name: "Total Patients", value: "2,400", change: "+12%", icon: Users },
@@ -85,7 +50,7 @@ export default function DashboardPage() {
           <motion.div 
             variants={itemVariants}
             key={idx} 
-            className="relative overflow-hidden bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+            className="relative overflow-hidden bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-[5px] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 to-transparent dark:from-indigo-950/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <div className="relative flex justify-between items-start">
@@ -93,12 +58,12 @@ export default function DashboardPage() {
                 <p className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">{stat.name}</p>
                 <h3 className="text-3xl font-bold mt-2 text-neutral-900 dark:text-neutral-50 tracking-tight">{stat.value}</h3>
               </div>
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-[5px] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
                 <stat.icon className="w-5 h-5" />
               </div>
             </div>
             <div className="relative mt-4 flex items-center text-sm">
-              <span className={`font-medium px-2 py-0.5 rounded-full ${stat.change.startsWith("+") ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"}`}>
+              <span className={`font-medium px-2 py-0.5 rounded-[5px] ${stat.change.startsWith("+") ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"}`}>
                 {stat.change}
               </span>
               <span className="text-neutral-500 ml-2">from last month</span>
@@ -108,52 +73,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Patient List Section */}
-      <motion.div variants={itemVariants} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-2xl shadow-sm flex-1 overflow-hidden">
+      <motion.div variants={itemVariants} className="bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-neutral-200/50 dark:border-neutral-800/50 rounded-[5px] shadow-sm flex-1 overflow-hidden">
         <div className="p-6 border-b border-neutral-200/50 dark:border-neutral-800/50 flex justify-between items-center bg-white/40 dark:bg-neutral-950/40">
           <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">Recent Patients</h2>
           
-          <Dialog open={openAdd} onOpenChange={setOpenAdd}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20 text-white shadow-sm transition-all rounded-xl">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Patient
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <form onSubmit={handleAddPatient}>
-                <DialogHeader>
-                  <DialogTitle>Add New Patient</DialogTitle>
-                  <DialogDescription>
-                    Enter the patient&apos;s basic information to register them in the system.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="firstName" className="text-right">
-                      First Name
-                    </Label>
-                    <Input id="firstName" name="firstName" placeholder="Jane" className="col-span-3" required />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="lastName" className="text-right">
-                      Last Name
-                    </Label>
-                    <Input id="lastName" name="lastName" placeholder="Doe" className="col-span-3" required />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="phone" className="text-right">
-                      Phone
-                    </Label>
-                    <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="col-span-3" required />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpenAdd(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Patient</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <AddPatientDialog onSuccess={refetchPatients} />
 
         </div>
         
@@ -175,7 +99,7 @@ export default function DashboardPage() {
                   <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">{patient.mrn}</td>
                   <td className="px-6 py-4">{new Date(patient.lastVisit).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full text-xs font-semibold tracking-wide border border-emerald-200/50 dark:border-emerald-800/50">
+                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-[5px] text-xs font-semibold tracking-wide border border-emerald-200/50 dark:border-emerald-800/50">
                       {patient.status}
                     </span>
                   </td>

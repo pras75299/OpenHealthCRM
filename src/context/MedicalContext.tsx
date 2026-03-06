@@ -28,12 +28,13 @@ export type Appointment = {
   time: string
   duration: string
   type: string
-  status: "Confirmed" | "In Waiting Room" | "Scheduled" | "Pending"
+  status: "Confirmed" | "In Waiting Room" | "Scheduled" | "Pending" | "Cancelled" | "cancelled"
 }
 
 type MedicalContextType = {
   patients: Patient[]
   addPatient: (patient: Omit<Patient, "id" | "mrn" | "regDate">) => void
+  refetchPatients: () => Promise<void>
   appointments: Appointment[]
   addAppointment: (appointment: Omit<Appointment, "id">) => void
   updateAppointment: (id: string, appointment: Partial<Appointment>) => void
@@ -48,31 +49,31 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
   const [appointments, setAppointments] = React.useState<Appointment[]>([])
   const [loading, setLoading] = React.useState(true)
 
-  React.useEffect(() => {
-    async function fetchData() {
-      try {
-        const [patientsRes, apptsRes] = await Promise.all([
-          fetch('/api/patients'),
-          fetch('/api/appointments')
-        ]);
-        
-        if (patientsRes.ok) {
-           const patientsData = await patientsRes.json();
-           setPatients(patientsData);
-        }
-        
-        if (apptsRes.ok) {
-           const apptsData = await apptsRes.json();
-           setAppointments(apptsData);
-        }
-      } catch (error) {
-        console.error("Failed to fetch initial data", error);
-      } finally {
-        setLoading(false);
+  const fetchData = React.useCallback(async () => {
+    try {
+      const [patientsRes, apptsRes] = await Promise.all([
+        fetch('/api/patients'),
+        fetch('/api/appointments')
+      ]);
+      if (patientsRes.ok) {
+        const patientsData = await patientsRes.json();
+        setPatients(patientsData);
       }
+      if (apptsRes.ok) {
+        const apptsData = await apptsRes.json();
+        setAppointments(apptsData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch initial data", error);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
   }, []);
+
+  React.useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
 
   const addPatient = async (patientData: Omit<Patient, "id" | "mrn" | "regDate" | "lastVisit"> & Partial<Patient>) => {
     try {
@@ -122,8 +123,20 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const refetchPatients = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/patients');
+      if (res.ok) {
+        const data = await res.json();
+        setPatients(data);
+      }
+    } catch (error) {
+      console.error("Failed to refetch patients", error);
+    }
+  }, []);
+
   return (
-    <MedicalContext.Provider value={{ patients, addPatient, appointments, addAppointment, updateAppointment }}>
+    <MedicalContext.Provider value={{ patients, addPatient, refetchPatients, appointments, addAppointment, updateAppointment }}>
       {children}
     </MedicalContext.Provider>
   )

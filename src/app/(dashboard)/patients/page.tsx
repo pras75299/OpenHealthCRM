@@ -1,19 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Filter as FilterIcon, Download } from "lucide-react"
+import { Filter as FilterIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import {
   Sheet,
   SheetTrigger,
@@ -29,34 +19,11 @@ import {
 import { toast } from "sonner"
 import { useMedical, Patient } from "@/context/MedicalContext"
 import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet"
+import { AddPatientDialog } from "@/components/patients/add-patient-dialog"
 
 export default function PatientsPage() {
-  const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
-  const { patients, addPatient } = useMedical()
-
-  const handleAddPatient = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    
-    addPatient({
-      firstName: formData.get("firstName") as string,
-      lastName: formData.get("lastName") as string,
-      dob: formData.get("dob") as string,
-      phone: formData.get("phone") as string,
-      status: "Active",
-      email: "",
-      address: "",
-      gender: "Unknown",
-      bloodType: "Unknown",
-      allergies: "None",
-      primaryCare: "Unassigned",
-      lastVisit: new Date().toISOString().split("T")[0]
-    })
-    
-    setOpen(false)
-    toast.success("Patient added successfully!")
-  }
+  const { patients, refetchPatients } = useMedical()
 
   const handleExport = () => {
     toast.success("Exporting patient list to CSV...")
@@ -70,57 +37,10 @@ export default function PatientsPage() {
           <p className="text-sm text-neutral-500">Manage your clinic&apos;s patients, medical histories, and health records.</p>
         </div>
         
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Patient
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleAddPatient}>
-              <DialogHeader>
-                <DialogTitle>Add New Patient</DialogTitle>
-                <DialogDescription>
-                  Enter the patient&apos;s basic information to register them in the system.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="firstName" className="text-right">
-                    First Name
-                  </Label>
-                  <Input id="firstName" name="firstName" placeholder="Jane" className="col-span-3" required />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="lastName" className="text-right">
-                    Last Name
-                  </Label>
-                  <Input id="lastName" name="lastName" placeholder="Doe" className="col-span-3" required />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dob" className="text-right">
-                    DOB
-                  </Label>
-                  <Input id="dob" name="dob" type="date" className="col-span-3" required />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">
-                    Phone
-                  </Label>
-                  <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" className="col-span-3" required />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Patient</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <AddPatientDialog onSuccess={refetchPatients} />
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 border rounded-xl flex-1 shadow-sm flex flex-col pt-2">
+      <div className="bg-white dark:bg-neutral-900 border rounded-[5px] flex-1 shadow-sm flex flex-col pt-2">
          <div className="px-6 py-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
              <Input 
                 type="search" 
@@ -177,7 +97,7 @@ export default function PatientsPage() {
                          <tr key={patient.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition">
                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex justify-center items-center text-xs">
+                                   <div className="w-8 h-8 rounded-[5px] bg-indigo-100 text-indigo-700 font-bold flex justify-center items-center text-xs">
                                      {patient.firstName[0]}{patient.lastName[0]}
                                    </div>
                                    <div>
@@ -190,7 +110,7 @@ export default function PatientsPage() {
                              </td>
                              <td className="px-6 py-4 font-mono text-xs text-neutral-500">{patient.mrn}</td>
                              <td className="px-6 py-4">
-                                 <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
+                                 <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-[5px] text-xs font-medium">
                                      {patient.status}
                                  </span>
                              </td>
