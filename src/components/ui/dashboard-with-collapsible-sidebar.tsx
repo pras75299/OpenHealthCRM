@@ -230,19 +230,28 @@ function DashboardHeader() {
           <Bell className="h-5 w-5" aria-hidden />
           <span className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-red-500 rounded-full" aria-hidden />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-[5px] h-9 w-9"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {mounted && theme === "dark" ? (
-            <Sun className="h-4 w-4" aria-hidden />
-          ) : (
-            <Moon className="h-4 w-4" aria-hidden />
-          )}
-        </Button>
+        {mounted ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-[5px] h-9 w-9"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" aria-hidden />
+            ) : (
+              <Moon className="h-4 w-4" aria-hidden />
+            )}
+          </Button>
+        ) : (
+          <div
+            className="h-9 w-9 shrink-0 rounded-[5px] flex items-center justify-center"
+            aria-hidden
+          >
+            <Moon className="h-4 w-4 text-neutral-500" aria-hidden />
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-[5px] h-9 w-9">
