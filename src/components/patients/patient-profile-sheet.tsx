@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Phone, Mail, MapPin, Activity, Calendar, AlertCircle, Droplet, User, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { SheetContent } from "@/components/ui/sheet"
+import { SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Patient } from "@/context/MedicalContext"
 
 interface PatientProfileSheetProps {
@@ -11,6 +11,8 @@ interface PatientProfileSheetProps {
 export function PatientProfileSheet({ patient }: PatientProfileSheetProps) {
   return (
     <SheetContent className="overflow-y-auto w-full sm:max-w-md md:sm:max-w-lg lg:max-w-xl border-l border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 p-0">
+      <SheetTitle className="sr-only">{patient.firstName} {patient.lastName} – Patient Profile</SheetTitle>
+      <SheetDescription className="sr-only">View and manage patient details, contact information, and medical history.</SheetDescription>
       {/* Banner Header */}
       <div className="h-32 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 relative">
         <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
