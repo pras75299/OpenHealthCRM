@@ -1,68 +1,141 @@
-require('dotenv').config();
-const { Pool } = require('pg');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { PrismaClient } = require('@prisma/client');
+require("dotenv").config();
+const { Pool } = require("pg");
+const { PrismaPg } = require("@prisma/adapter-pg");
+const { PrismaClient } = require("@prisma/client");
 
-const connectionString = `${process.env.DATABASE_URL}`;
+const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('Starting seed...');
+  console.log("Starting seed...");
 
-  // Create a default organization
-  const defaultOrg = await prisma.organization.create({
-    data: {
-      name: 'Acme Clinic',
-    },
-  });
-
-  console.log('Created Default Organization:', defaultOrg.id);
-
-  // Create a default admin user
-  const adminUser = await prisma.user.create({
-    data: {
-      organizationId: defaultOrg.id,
-      email: 'admin@acmeclinic.com',
-      name: 'Admin Doctor',
-      passwordHash: 'hashed_password_placeholder',
-    },
-  });
-
-  console.log('Created Admin User:', adminUser.id);
-
-  // Create a few dummy patients
-  const patients = await prisma.patient.createMany({
-    data: [
-      {
-        organizationId: defaultOrg.id,
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '555-0101',
-        dateOfBirth: new Date('1980-05-15'),
+  let defaultOrg = await prisma.organization.findFirst();
+  if (!defaultOrg) {
+    defaultOrg = await prisma.organization.create({
+      data: {
+        name: "Acme Clinic",
+        timezone: "America/New_York",
+        currency: "USD",
       },
-      {
-        organizationId: defaultOrg.id,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: 'jane.smith@example.com',
-        phone: '555-0202',
-        dateOfBirth: new Date('1992-11-20'),
-      },
-       {
-        organizationId: defaultOrg.id,
-        firstName: 'Alice',
-        lastName: 'Johnson',
-        email: 'alice.j@example.com',
-        phone: '555-0303',
-        dateOfBirth: new Date('1975-02-10'),
-      }
-    ],
-  });
+    });
+  }
+  console.log("Organization:", defaultOrg.id);
 
-  console.log('Created Dummy Patients:', patients.count);
+  let doctorRole = await prisma.role.findFirst({
+    where: { organizationId: defaultOrg.id, name: "Doctor" },
+  });
+  if (!doctorRole) {
+    doctorRole = await prisma.role.create({
+      data: {
+        organizationId: defaultOrg.id,
+        name: "Doctor",
+      },
+    });
+  }
+
+  let adminUser = await prisma.user.findFirst({
+    where: { organizationId: defaultOrg.id },
+  });
+  if (!adminUser) {
+    adminUser = await prisma.user.create({
+      data: {
+        organizationId: defaultOrg.id,
+        email: "admin@acmeclinic.com",
+        name: "Admin Doctor",
+        passwordHash: "hashed_password_placeholder",
+      },
+    });
+  }
+
+  const existingUr = await prisma.userRole.findFirst({
+    where: { userId: adminUser.id, roleId: doctorRole.id },
+  });
+  if (!existingUr) {
+    await prisma.userRole.create({
+      data: { userId: adminUser.id, roleId: doctorRole.id },
+    });
+  }
+
+  const permCount = await prisma.rolePermission.count({
+    where: { roleId: doctorRole.id },
+  });
+  if (permCount === 0) {
+    await prisma.rolePermission.createMany({
+      data: [
+        { roleId: doctorRole.id, action: "patients:read", resource: "patients" },
+        { roleId: doctorRole.id, action: "patients:write", resource: "patients" },
+        { roleId: doctorRole.id, action: "appointments:read", resource: "appointments" },
+        { roleId: doctorRole.id, action: "appointments:write", resource: "appointments" },
+        { roleId: doctorRole.id, action: "encounters:read", resource: "encounters" },
+        { roleId: doctorRole.id, action: "encounters:write", resource: "encounters" },
+        { roleId: doctorRole.id, action: "billing:read", resource: "billing" },
+        { roleId: doctorRole.id, action: "billing:write", resource: "billing" },
+      ],
+    });
+  }
+
+  const roomCount = await prisma.room.count({
+    where: { organizationId: defaultOrg.id },
+  });
+  if (roomCount === 0) {
+    await prisma.room.createMany({
+      data: [
+        { organizationId: defaultOrg.id, name: "Operatory 1", type: "operatory" },
+        { organizationId: defaultOrg.id, name: "Consultation Room A", type: "consultation" },
+      ],
+    });
+  }
+
+  const equipCount = await prisma.equipment.count({
+    where: { organizationId: defaultOrg.id },
+  });
+  if (equipCount === 0) {
+    await prisma.equipment.createMany({
+      data: [
+        { organizationId: defaultOrg.id, name: "X-Ray Machine 1", type: "xray" },
+        { organizationId: defaultOrg.id, name: "ECG Monitor", type: "diagnostic" },
+      ],
+    });
+  }
+
+  const patientCount = await prisma.patient.count({
+    where: { organizationId: defaultOrg.id },
+  });
+  if (patientCount === 0) {
+    await prisma.patient.createMany({
+      data: [
+        {
+          organizationId: defaultOrg.id,
+          firstName: "John",
+          lastName: "Doe",
+          email: "john.doe@example.com",
+          phone: "555-0101",
+          dateOfBirth: new Date("1980-05-15"),
+        },
+        {
+          organizationId: defaultOrg.id,
+          firstName: "Jane",
+          lastName: "Smith",
+          email: "jane.smith@example.com",
+          phone: "555-0202",
+          dateOfBirth: new Date("1992-11-20"),
+        },
+        {
+          organizationId: defaultOrg.id,
+          firstName: "Alice",
+          lastName: "Johnson",
+          email: "alice.j@example.com",
+          phone: "555-0303",
+          dateOfBirth: new Date("1975-02-10"),
+        },
+      ],
+    });
+    console.log("Created 3 patients");
+  } else {
+    console.log("Patients already exist");
+  }
 }
 
 main()
