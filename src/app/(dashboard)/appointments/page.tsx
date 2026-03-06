@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon, Clock, Plus, Filter } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Filter, List, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -23,50 +22,179 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
+import { format } from "date-fns"
 import { useMedical, Appointment } from "@/context/MedicalContext"
+import { BookAppointmentDialog } from "@/components/features/appointments/book-appointment-dialog"
+import {
+  FullScreenCalendar,
+  type CalendarEvent,
+} from "@/components/ui/fullscreen-calendar"
+import { cn } from "@/lib/utils"
 
-export default function AppointmentsPage() {
-  const [open, setOpen] = React.useState(false)
-  const { appointments, patients, addAppointment, updateAppointment } = useMedical()
+function toStatusValue(s: Appointment["status"]): string {
+  if (s === "Confirmed") return "confirmed"
+  if (s === "In Waiting Room") return "waiting"
+  if (s === "Scheduled") return "scheduled"
+  return "pending"
+}
+function toTimeValue(t: string): string {
+  if (t.includes("AM") || t.includes("PM")) {
+    const m = t.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)/i)
+    if (m) {
+      let h = parseInt(m[1], 10)
+      const min = m[2] ? parseInt(m[2], 10) : 0
+      if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12
+      if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0
+      return `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`
+    }
+  }
+  return t.replace(/\s*(AM|PM)/gi, "") || "09:00"
+}
 
-  const handleBook = (e: React.FormEvent<HTMLFormElement>) => {
+const DEFAULT_PROVIDERS = ["Dr. Jane Smith", "Dr. Robert Chen"] as const
+
+function EditAppointmentDialog({
+  apt,
+  patientName,
+  onSave,
+  onCancel,
+}: {
+  apt: Appointment
+  patientName: string
+  onSave: (data: { provider: string; date: string; time: string; status: string }) => void
+  onCancel: () => void
+}) {
+  const providerOptions = React.useMemo(() => {
+    const current = apt.provider?.trim()
+    if (!current || DEFAULT_PROVIDERS.includes(current as (typeof DEFAULT_PROVIDERS)[number])) {
+      return [...DEFAULT_PROVIDERS]
+    }
+    return [current, ...DEFAULT_PROVIDERS]
+  }, [apt.provider])
+
+  const [provider, setProvider] = React.useState(apt.provider?.trim() || DEFAULT_PROVIDERS[0])
+  const [date, setDate] = React.useState(apt.date)
+  const [time, setTime] = React.useState(toTimeValue(apt.time))
+  const [status, setStatus] = React.useState(toStatusValue(apt.status))
+
+  React.useEffect(() => {
+    setProvider(apt.provider?.trim() || DEFAULT_PROVIDERS[0])
+    setDate(apt.date)
+    setTime(toTimeValue(apt.time))
+    setStatus(toStatusValue(apt.status))
+  }, [apt.id, apt.provider, apt.date, apt.time, apt.status])
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    
-    addAppointment({
-      patientId: formData.get("patientId") as string,
-      provider: formData.get("provider") as string,
-      date: formData.get("date") as string,
-      time: formData.get("time") as string,
-      type: formData.get("type") as string,
-      duration: "30 min",
-      status: "Scheduled"
-    })
-    
-    setOpen(false)
-    toast.success("Appointment booked successfully!")
+    onSave({ provider, date, time, status })
   }
 
-  const handleEdit = (id: string, e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    
-    const rawStatus = formData.get("status") as string
-    const statusMap: Record<string, Appointment["status"]> = {
-        "scheduled": "Scheduled",
-        "confirmed": "Confirmed",
-        "waiting": "In Waiting Room",
-        "pending": "Pending"
-    }
+  return (
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Appointment</DialogTitle>
+            <DialogDescription>
+              Update details for {patientName}&apos;s appointment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-provider">Provider</Label>
+              <Select value={provider || providerOptions[0]} onValueChange={setProvider}>
+                <SelectTrigger id="edit-provider" className="w-full">
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providerOptions.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-date">Date</Label>
+                <Input id="edit-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-time">Time</Label>
+                <Input id="edit-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger id="edit-status">
+                  <SelectValue placeholder="Appointment status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="waiting">In Waiting Room</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Changes</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
+export default function AppointmentsPage() {
+  const { appointments, patients, addAppointment, updateAppointment } = useMedical()
+  const [view, setView] = React.useState<"list" | "calendar">("list")
+  const [editAptId, setEditAptId] = React.useState<string | null>(null)
+
+  const statusMap: Record<string, Appointment["status"]> = {
+    scheduled: "Scheduled",
+    confirmed: "Confirmed",
+    waiting: "In Waiting Room",
+    pending: "Pending",
+  }
+  const handleEdit = (id: string, data: { provider: string; date: string; time: string; status: string }) => {
     updateAppointment(id, {
-        provider: formData.get("provider") as string,
-        date: formData.get("date") as string,
-        time: formData.get("time") as string,
-        status: statusMap[rawStatus] || "Pending"
+      provider: data.provider,
+      date: data.date,
+      time: data.time,
+      status: statusMap[data.status] || "Pending",
     })
-    
     toast.success("Appointment updated successfully!")
+  }
+
+  // Map appointments to CalendarEvent for 3D calendar (exclude cancelled)
+  const calendarEvents: CalendarEvent[] = React.useMemo(() => {
+    return appointments
+      .filter((apt) => apt.status !== "Cancelled" && apt.status !== "cancelled")
+      .map((apt) => {
+        const patient = patients.find((p) => p.id === apt.patientId)
+        const patientName = patient
+          ? `${patient.firstName} ${patient.lastName}`
+          : "Unknown Patient"
+        const apiApt = apt as { startTime?: string }
+        const dateIso = apiApt.startTime
+          ? apiApt.startTime
+          : `${apt.date}T09:00:00`
+        return {
+          id: apt.id,
+          title: `${patientName} – ${apt.type}`,
+          date: dateIso,
+        }
+      })
+  }, [appointments, patients])
+
+  const handleRemoveCalendarEvent = (id: string) => {
+    updateAppointment(id, { status: "Cancelled" })
+    toast.success("Appointment cancelled.")
   }
 
   return (
@@ -77,98 +205,76 @@ export default function AppointmentsPage() {
           <p className="text-sm text-neutral-500">Manage schedules, book appointments, and view daily calendars.</p>
         </div>
         
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Book Appointment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleBook}>
-              <DialogHeader>
-                <DialogTitle>Book Appointment</DialogTitle>
-                <DialogDescription>
-                  Schedule a new appointment for a patient.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="patientId">Patient</Label>
-                  <Select name="patientId" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a patient" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patients.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="provider">Provider</Label>
-                  <Select name="provider" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Dr. Jane Smith">Dr. Jane Smith</SelectItem>
-                      <SelectItem value="Dr. Robert Chen">Dr. Robert Chen</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input id="date" name="date" type="date" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="time">Time</Label>
-                    <Input id="time" name="time" type="time" required />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select name="type" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Appointment type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Follow-up">Follow-up</SelectItem>
-                      <SelectItem value="Consultation">Consultation</SelectItem>
-                      <SelectItem value="New Patient">New Patient</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Book</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <BookAppointmentDialog
+          patients={patients}
+          onBook={(data) =>
+            addAppointment({
+              patientId: data.patientId,
+              provider: data.provider,
+              date: data.date,
+              time: data.time,
+              type: data.type,
+              duration: data.duration,
+              status: "Scheduled",
+            })
+          }
+        />
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 border rounded-xl flex-1 shadow-sm flex flex-col pt-2">
+      <div className="bg-white dark:bg-neutral-900 border rounded-[5px] flex-1 shadow-sm flex flex-col pt-2">
          <div className="px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
              <div className="flex items-center gap-2 text-lg font-medium">
                <CalendarIcon className="w-5 h-5 text-neutral-500" />
-               Today, Oct 24
+               {view === "list"
+                 ? "Today, Oct 24"
+                 : "Month view"}
              </div>
              <div className="flex gap-2">
                  <Button variant="outline" size="sm" className="flex items-center">
                      <Filter className="w-4 h-4 mr-2" />
                      All Providers
                  </Button>
-                 <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-1 flex">
-                     <button className="px-3 py-1 rounded-md bg-white dark:bg-neutral-700 shadow-sm text-sm font-medium">List</button>
-                     <button className="px-3 py-1 rounded-md text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 text-sm font-medium">Calendar</button>
+                 <div className="bg-neutral-100 dark:bg-neutral-800 rounded-[5px] p-1 flex" role="tablist" aria-label="View mode">
+                     <button
+                       role="tab"
+                       aria-selected={view === "list"}
+                       onClick={() => setView("list")}
+                       className={cn(
+                         "px-3 py-1.5 rounded-[5px] text-sm font-medium flex items-center gap-1.5 transition-all",
+                         view === "list"
+                           ? "bg-white dark:bg-neutral-700 shadow-sm text-neutral-900 dark:text-neutral-100"
+                           : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                       )}
+                     >
+                       <List className="w-3.5 h-3.5" />
+                       List
+                     </button>
+                     <button
+                       role="tab"
+                       aria-selected={view === "calendar"}
+                       onClick={() => setView("calendar")}
+                       className={cn(
+                         "px-3 py-1.5 rounded-[5px] text-sm font-medium flex items-center gap-1.5 transition-all",
+                         view === "calendar"
+                           ? "bg-white dark:bg-neutral-700 shadow-sm text-neutral-900 dark:text-neutral-100"
+                           : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                       )}
+                     >
+                       <CalendarDays className="w-3.5 h-3.5" />
+                       Calendar
+                     </button>
                  </div>
              </div>
          </div>
          
+         {view === "calendar" ? (
+           <div className="flex-1 overflow-auto min-h-0">
+             <FullScreenCalendar
+               events={calendarEvents}
+               onEventClick={(ev) => setEditAptId(ev.id)}
+             />
+           </div>
+         ) : (
          <div className="p-0 overflow-x-auto flex-1">
              <table className="w-full text-sm text-left">
                  <thead className="bg-neutral-50 dark:bg-neutral-800/50 text-neutral-500 font-medium">
@@ -197,7 +303,7 @@ export default function AppointmentsPage() {
                              <td className="px-6 py-4">{apt.type}</td>
                              <td className="px-6 py-4 hidden md:table-cell text-neutral-500">{apt.provider}</td>
                              <td className="px-6 py-4">
-                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                               <span className={`px-2 py-1 rounded-[5px] text-xs font-medium ${
                                     apt.status === "Confirmed" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
                                     apt.status === "In Waiting Room" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
                                     apt.status === "Scheduled" ? "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300" :
@@ -207,83 +313,41 @@ export default function AppointmentsPage() {
                                </span>
                              </td>
                              <td className="px-6 py-4">
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Button variant="link" className="text-indigo-600 hover:text-indigo-700 p-0 h-auto mr-3">Edit</Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[425px]">
-                                        <form onSubmit={(e) => {
-                                            const form = e.target as HTMLFormElement;
-                                            const closeBtn = form.querySelector('[data-dialog-close]') as HTMLButtonElement;
-                                            if (closeBtn) closeBtn.click();
-                                            handleEdit(apt.id, e);
-                                        }}>
-                                            <DialogHeader>
-                                                <DialogTitle>Edit Appointment</DialogTitle>
-                                                <DialogDescription>
-                                                Update details for {patientName}&apos;s appointment.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="grid gap-4 py-4">
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor={`provider-${apt.id}`}>Provider</Label>
-                                                    <Select name="provider" defaultValue={apt.provider}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a provider" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="Dr. Jane Smith">Dr. Jane Smith</SelectItem>
-                                                            <SelectItem value="Dr. Robert Chen">Dr. Robert Chen</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor={`date-${apt.id}`}>Date</Label>
-                                                        <Input id={`date-${apt.id}`} name="date" type="date" defaultValue={apt.date} required />
-                                                    </div>
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor={`time-${apt.id}`}>Time</Label>
-                                                        <Input id={`time-${apt.id}`} name="time" type="time" defaultValue={apt.time.includes("AM") ? apt.time.replace(" AM", "") : apt.time.replace(" PM", "")} required />
-                                                    </div>
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor={`status-${apt.id}`}>Status</Label>
-                                                    <Select name="status" defaultValue={
-                                                        apt.status === "Confirmed" ? "confirmed" : 
-                                                        apt.status === "In Waiting Room" ? "waiting" : 
-                                                        apt.status === "Scheduled" ? "scheduled" : "pending"}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Appointment status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="scheduled">Scheduled</SelectItem>
-                                                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                                                            <SelectItem value="waiting">In Waiting Room</SelectItem>
-                                                            <SelectItem value="pending">Pending</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                            <DialogFooter>
-                                                {/* Hidden close button to trigger close on submit */}
-                                                <Button type="button" data-dialog-close variant="outline" className="hidden">Cancel</Button>
-                                                <DialogTrigger asChild>
-                                                    <Button type="button" variant="outline">Cancel</Button>
-                                                </DialogTrigger>
-                                                <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white">Save Changes</Button>
-                                            </DialogFooter>
-                                        </form>
-                                    </DialogContent>
-                                </Dialog>
-                                <Button variant="link" className="text-neutral-400 hover:text-red-600 p-0 h-auto" onClick={() => toast.success("Appointment cancelled!")}>Cancel</Button>
+                                <Button
+                                  variant="link"
+                                  className="text-indigo-600 hover:text-indigo-700 p-0 h-auto mr-3"
+                                  onClick={() => setEditAptId(apt.id)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button variant="link" className="text-neutral-400 hover:text-red-600 p-0 h-auto" onClick={() => { updateAppointment(apt.id, { status: "Cancelled" }); toast.success("Appointment cancelled!"); }}>Cancel</Button>
                              </td>
                          </tr>
                      )})}
                  </tbody>
              </table>
          </div>
+         )}
       </div>
+
+      {editAptId && (() => {
+        const apt = appointments.find((a) => a.id === editAptId)
+        if (!apt) return null
+        const patient = patients.find((p) => p.id === apt.patientId)
+        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient"
+        return (
+          <EditAppointmentDialog
+            key={apt.id}
+            apt={apt}
+            patientName={patientName}
+            onSave={(data) => {
+              handleEdit(apt.id, data)
+              setEditAptId(null)
+            }}
+            onCancel={() => setEditAptId(null)}
+          />
+        )
+      })()}
     </div>
   )
 }
