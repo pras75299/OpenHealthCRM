@@ -4,7 +4,12 @@ import { PrismaClient } from '@prisma/client'
 
 const connectionString = `${process.env.DATABASE_URL}`
 
-const pool = new Pool({ connectionString })
+// Neon cold starts can take 5–15s; increase timeout so first request doesn't fail
+const pool = new Pool({
+  connectionString,
+  connectionTimeoutMillis: 30_000,
+  idleTimeoutMillis: 30_000,
+})
 const adapter = new PrismaPg(pool)
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
