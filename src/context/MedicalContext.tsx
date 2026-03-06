@@ -26,9 +26,11 @@ export type Appointment = {
   provider: string
   date: string
   time: string
-  duration: string
+  duration?: string
   type: string
-  status: "Confirmed" | "In Waiting Room" | "Scheduled" | "Pending" | "Cancelled" | "cancelled"
+  status: string
+  startTime?: string
+  endTime?: string
 }
 
 type MedicalContextType = {
