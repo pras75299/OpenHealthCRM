@@ -1,0 +1,63 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { getOrgId, assertOrgScope } from "@/lib/org";
+import { getCurrentUserId } from "@/lib/auth";
+import { soapNoteSchema } from "@/lib/validations";
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: encounterId } = await params;
+    const orgId = await getOrgId();
+    assertOrgScope(orgId);
+    const userId = await getCurrentUserId(orgId);
+
+    const encounter = await prisma.encounter.findFirst({
+      where: { id: encounterId, organizationId: orgId },
+    });
+    if (!encounter) {
+      return NextResponse.json({ error: "Encounter not found" }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const parsed = soapNoteSchema
+      .extend({
+        noteType: z.string().optional(),
+        text: z.string().optional(),
+      })
+      .safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data;
+
+    const note = await prisma.encounterNote.create({
+      data: {
+        encounterId,
+        authorId: userId,
+        noteType: data.noteType ?? "SOAP",
+        subjective: data.subjective ?? null,
+        objective: data.objective ?? null,
+        assessment: data.assessment ?? null,
+        plan: data.plan ?? null,
+        text: data.text ?? null,
+      },
+    });
+
+    return NextResponse.json(note, { status: 201 });
+  } catch (error) {
+    console.error("Error creating encounter note:", error);
+    return NextResponse.json(
+      { error: "Failed to create encounter note" },
+      { status: 500 }
+    );
+  }
+}

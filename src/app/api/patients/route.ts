@@ -1,110 +1,148 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getOrgId, assertOrgScope } from "@/lib/org";
+import { getCurrentUserId } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
+import { patientCreateSchema, patientUpdateSchema } from "@/lib/validations";
 
-// GET /api/patients
-// Fetches all patients for the default organization
-export async function GET() {
-    try {
-        // TEMPORARY: Fetch the first organization to act as default tenant
-        const defaultOrg = await prisma.organization.findFirst();
-
-        if (!defaultOrg) {
-            return NextResponse.json(
-                { error: "No organization found. Please seed the database." },
-                { status: 500 }
-            );
-        }
-
-        const patients = await prisma.patient.findMany({
-            where: {
-                organizationId: defaultOrg.id,
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
-
-        // Map Prisma schema to expected frontend Patient type
-        const mappedPatients = patients.map((p) => ({
-            id: p.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-            dob: p.dateOfBirth?.toISOString().split("T")[0] || "",
-            phone: p.phone || "",
-            email: p.email || "",
-            address: p.address || "",
-            mrn: `PT-${p.id.substring(0, 5).toUpperCase()}`, // Simulated MRN if not in schema
-            status: "Active", // Defaulting as status isn't explicitly in schema
-            lastVisit: p.updatedAt.toISOString().split("T")[0],
-            regDate: p.createdAt.toISOString().split("T")[0],
-            gender: "Unknown",      // Fields missing from current Prisma Patient schema
-            bloodType: "Unknown",   // Need to be added to DB later or handled gracefully
-            allergies: "None",
-            primaryCare: "Unassigned",
-        }));
-
-        return NextResponse.json(mappedPatients);
-    } catch (error) {
-        console.error("Error fetching patients:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch patients" },
-            { status: 500 }
-        );
-    }
+function mapPatientToResponse(p: {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date | null;
+  gender: string | null;
+  email: string | null;
+  phone: string | null;
+  phoneSecondary: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  country: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  primaryCareProvider: string | null;
+  status: string;
+  mrn: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return {
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    dob: p.dateOfBirth?.toISOString().split("T")[0] ?? "",
+    gender: p.gender ?? "Unknown",
+    email: p.email ?? "",
+    phone: p.phone ?? "",
+    phoneSecondary: p.phoneSecondary ?? "",
+    address: p.address ?? "",
+    city: p.city ?? "",
+    state: p.state ?? "",
+    zip: p.zip ?? "",
+    country: p.country ?? "",
+    bloodType: p.bloodType ?? "Unknown",
+    allergies: p.allergies ?? "None",
+    primaryCareProvider: p.primaryCareProvider ?? "Unassigned",
+    mrn: p.mrn ?? `PT-${p.id.substring(0, 5).toUpperCase()}`,
+    status: p.status ?? "Active",
+    lastVisit: p.updatedAt.toISOString().split("T")[0],
+    regDate: p.createdAt.toISOString().split("T")[0],
+  };
 }
 
-// POST /api/patients
-// Creates a new patient
+export async function GET() {
+  try {
+    const orgId = await getOrgId();
+    assertOrgScope(orgId);
+
+    const patients = await prisma.patient.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(patients.map(mapPatientToResponse));
+  } catch (error) {
+    console.error("Error fetching patients:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch patients" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
-    try {
-        const defaultOrg = await prisma.organization.findFirst();
-        if (!defaultOrg) {
-            return NextResponse.json(
-                { error: "No organization found." },
-                { status: 500 }
-            );
-        }
+  try {
+    const orgId = await getOrgId();
+    assertOrgScope(orgId);
+    const userId = await getCurrentUserId(orgId);
 
-        const body = await request.json();
+    const body = await request.json();
+    const parsed = patientCreateSchema.safeParse(body);
 
-        // Map from frontend Patient type to Prisma schema
-        const newPatient = await prisma.patient.create({
-            data: {
-                organizationId: defaultOrg.id,
-                firstName: body.firstName,
-                lastName: body.lastName,
-                dateOfBirth: body.dob ? new Date(body.dob) : null,
-                phone: body.phone,
-                email: body.email,
-                address: body.address,
-            },
-        });
-
-        // Map back for response
-        const mappedResult = {
-            id: newPatient.id,
-            firstName: newPatient.firstName,
-            lastName: newPatient.lastName,
-            dob: newPatient.dateOfBirth?.toISOString().split("T")[0] || "",
-            phone: newPatient.phone || "",
-            email: newPatient.email || "",
-            address: newPatient.address || "",
-            mrn: `PT-${newPatient.id.substring(0, 5).toUpperCase()}`,
-            status: "Active",
-            lastVisit: newPatient.updatedAt.toISOString().split("T")[0],
-            regDate: newPatient.createdAt.toISOString().split("T")[0],
-            gender: body.gender || "Unknown",
-            bloodType: body.bloodType || "Unknown",
-            allergies: body.allergies || "None",
-            primaryCare: body.primaryCare || "Unassigned",
-        };
-
-        return NextResponse.json(mappedResult, { status: 201 });
-    } catch (error) {
-        console.error("Error creating patient:", error);
-        return NextResponse.json(
-            { error: "Failed to create patient" },
-            { status: 500 }
-        );
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
+
+    const data = parsed.data;
+
+    const newPatient = await prisma.$transaction(async (tx) => {
+      const patient = await tx.patient.create({
+        data: {
+          organizationId: orgId,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+          gender: data.gender ?? null,
+          email: data.email || null,
+          phone: data.phone || null,
+          phoneSecondary: data.phoneSecondary || null,
+          address: data.address || null,
+          city: data.city || null,
+          state: data.state || null,
+          zip: data.zip || null,
+          country: data.country || null,
+          bloodType: data.bloodType || null,
+          allergies: data.allergies || null,
+          primaryCareProvider: data.primaryCareProvider || null,
+          familyHistory: data.familyHistory || null,
+        },
+      });
+
+      if (data.emergencyContactName || data.emergencyContactPhone) {
+        await tx.emergencyContact.create({
+          data: {
+            patientId: patient.id,
+            name: data.emergencyContactName ?? "Unknown",
+            phone: data.emergencyContactPhone ?? "",
+            relationship: data.emergencyContactRelationship ?? null,
+          },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId,
+          action: "CREATE",
+          entityType: "Patient",
+          entityId: patient.id,
+          afterState: JSON.stringify(patient),
+        },
+      });
+
+      return patient;
+    });
+
+    return NextResponse.json(mapPatientToResponse(newPatient), { status: 201 });
+  } catch (error) {
+    console.error("Error creating patient:", error);
+    return NextResponse.json(
+      { error: "Failed to create patient" },
+      { status: 500 }
+    );
+  }
 }
