@@ -19,7 +19,7 @@ export default function EncountersPage() {
           <CardTitle>Recent Encounters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-[5px] border">
             <div className="p-8 text-center text-sm text-muted-foreground">
               No encounters found.
             </div>

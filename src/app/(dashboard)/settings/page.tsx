@@ -25,13 +25,13 @@ export default function SettingsPage() {
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 border rounded-xl shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[500px]">
+      <div className="bg-white dark:bg-neutral-900 border rounded-[5px] shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[500px]">
          <div className="w-full md:w-64 border-r bg-neutral-50/50 dark:bg-neutral-950 p-4">
              <nav className="flex flex-col gap-1">
-                <button className="text-left px-3 py-2 bg-white dark:bg-neutral-800 shadow-sm border rounded-md text-sm font-medium text-indigo-600">General</button>
-                <button className="text-left px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Billing & Invoices</button>
-                <button className="text-left px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Team Members</button>
-                <button className="text-left px-3 py-2 rounded-md text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Notifications</button>
+                <button className="text-left px-3 py-2 bg-white dark:bg-neutral-800 shadow-sm border rounded-[5px] text-sm font-medium text-indigo-600">General</button>
+                <button className="text-left px-3 py-2 rounded-[5px] text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Billing & Invoices</button>
+                <button className="text-left px-3 py-2 rounded-[5px] text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Team Members</button>
+                <button className="text-left px-3 py-2 rounded-[5px] text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800">Notifications</button>
              </nav>
          </div>
          <div className="p-6 flex-1 flex flex-col gap-6">
@@ -60,14 +60,14 @@ export default function SettingsPage() {
                         <p className="font-medium text-sm">Require Patient Confirmation</p>
                         <p className="text-xs text-neutral-500">Send an SMS 24 hours prior requesting confirmation</p>
                     </div>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-indigo-600 rounded border-gray-300" />
+                    <input type="checkbox" defaultChecked className="w-4 h-4 text-indigo-600 rounded-[5px] border-gray-300" />
                 </div>
                 <div className="flex items-center justify-between py-2">
                     <div>
                         <p className="font-medium text-sm">Allow Online Booking</p>
                         <p className="text-xs text-neutral-500">Let patients schedule their own encounters</p>
                     </div>
-                    <input type="checkbox" defaultChecked className="w-4 h-4 text-indigo-600 rounded border-gray-300" />
+                    <input type="checkbox" defaultChecked className="w-4 h-4 text-indigo-600 rounded-[5px] border-gray-300" />
                 </div>
              </div>
          </div>
