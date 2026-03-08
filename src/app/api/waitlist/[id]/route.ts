@@ -1,0 +1,59 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getOrgId, assertOrgScope } from "@/lib/org";
+import { getCurrentUserId } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
+
+export async function PATCH(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const orgId = await getOrgId();
+        assertOrgScope(orgId);
+        const userId = await getCurrentUserId(orgId);
+
+        const { id } = await params;
+        const body = await request.json();
+        const { status, notes, preferredDate } = body;
+
+        const existing = await prisma.waitlistEntry.findFirst({
+            where: { id, organizationId: orgId },
+        });
+        if (!existing) {
+            return NextResponse.json({ error: "Waitlist entry not found" }, { status: 404 });
+        }
+
+        const updated = await prisma.waitlistEntry.update({
+            where: { id },
+            data: {
+                ...(status ? { status } : {}),
+                ...(notes !== undefined ? { notes } : {}),
+                ...(preferredDate ? { preferredDate: new Date(preferredDate) } : {}),
+            },
+            include: { patient: { select: { firstName: true, lastName: true } } },
+        });
+
+        await createAuditLog({
+            organizationId: orgId,
+            userId,
+            action: "UPDATE",
+            entityType: "WaitlistEntry",
+            entityId: id,
+            beforeState: JSON.stringify({ status: existing.status }),
+            afterState: JSON.stringify({ status: updated.status }),
+        });
+
+        return NextResponse.json({
+            id: updated.id,
+            patientId: updated.patientId,
+            patientName: `${updated.patient.firstName} ${updated.patient.lastName}`,
+            status: updated.status,
+            notes: updated.notes,
+            preferredDate: updated.preferredDate?.toISOString() ?? null,
+        });
+    } catch (error) {
+        console.error("Error updating waitlist entry:", error);
+        return NextResponse.json({ error: "Failed to update waitlist entry" }, { status: 500 });
+    }
+}
