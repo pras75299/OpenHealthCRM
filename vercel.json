@@ -2,6 +2,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm ci --legacy-peer-deps",
-  "framework": "nextjs",
-  "nodeVersion": "20.11.1"
+  "framework": "nextjs"
 }
