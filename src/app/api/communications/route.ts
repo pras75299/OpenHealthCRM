@@ -120,6 +120,17 @@ export async function POST(request: NextRequest) {
             finalCommunication = await prisma.communication.update({
               where: { id: communication.id },
               data: { status: "failed" },
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+              },
             });
           } else {
             sendResult = await sendSMS(patient.phone, content);
@@ -131,6 +142,17 @@ export async function POST(request: NextRequest) {
             finalCommunication = await prisma.communication.update({
               where: { id: communication.id },
               data: { status: "failed" },
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+              },
             });
           } else {
             sendResult = await sendEmail(
@@ -146,6 +168,17 @@ export async function POST(request: NextRequest) {
             finalCommunication = await prisma.communication.update({
               where: { id: communication.id },
               data: { status: "failed" },
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+              },
             });
           } else {
             sendResult = await sendWhatsApp(patient.phone, content);
@@ -161,11 +194,33 @@ export async function POST(request: NextRequest) {
               status: "sent",
               sentAt: new Date(),
             },
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+            },
           });
         } else if (sendResult && !sendSuccess) {
           finalCommunication = await prisma.communication.update({
             where: { id: communication.id },
             data: { status: "failed" },
+            include: {
+              patient: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+            },
           });
         }
       } catch (sendError) {
@@ -173,6 +228,17 @@ export async function POST(request: NextRequest) {
         finalCommunication = await prisma.communication.update({
           where: { id: communication.id },
           data: { status: "failed" },
+          include: {
+            patient: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
         });
       }
     }
