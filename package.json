@@ -3,18 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "bun": ">=1.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "bun run next dev",
-    "build": "bun run next build",
-    "start": "bun run next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint",
-    "db:seed": "bun prisma/seed.js",
-    "db:migrate": "bunx prisma migrate dev"
+    "db:seed": "node prisma/seed.js",
+    "db:migrate": "prisma migrate dev"
   },
   "prisma": {
-    "seed": "bun prisma/seed.js"
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
