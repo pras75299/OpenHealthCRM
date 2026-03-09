@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             channel: patient.phone ? "sms" : "email",
             type: "reminder",
             status: "sent",
-            content: messages.sms,
+            content: `[APPOINTMENT_ID: ${appointment.id}]\n\n${messages.sms}`,
             sentAt: now,
           },
         });

@@ -46,6 +46,15 @@ export default function CommunicationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Map handlers to convert "all" sentinel to empty string for API queries
+  const handleChannelChange = (value: string) => {
+    setChannelFilter(value === "all" ? "" : value);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value === "all" ? "" : value);
+  };
+
   useEffect(() => {
     fetchCommunications();
   }, [channelFilter, statusFilter]);
@@ -152,23 +161,29 @@ export default function CommunicationsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="flex-1"
           />
-          <Select value={channelFilter} onValueChange={setChannelFilter}>
+          <Select
+            value={channelFilter || "all"}
+            onValueChange={handleChannelChange}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Channels" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Channels</SelectItem>
+              <SelectItem value="all">All Channels</SelectItem>
               <SelectItem value="sms">SMS</SelectItem>
               <SelectItem value="email">Email</SelectItem>
               <SelectItem value="whatsapp">WhatsApp</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter || "all"}
+            onValueChange={handleStatusChange}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="sent">Sent</SelectItem>
               <SelectItem value="delivered">Delivered</SelectItem>

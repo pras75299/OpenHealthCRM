@@ -107,48 +107,90 @@ export async function POST(request: NextRequest) {
     });
 
     // Send immediately if not scheduled
+    let finalCommunication = communication;
     if (!scheduledFor && channel !== "in_app") {
       try {
-        if (channel === "sms" && patient.phone) {
-          await sendSMS(patient.phone, content);
-        } else if (channel === "email" && patient.email) {
-          await sendEmail(
-            patient.email,
-            type === "reminder" ? "Appointment Reminder" : type,
-            content,
-          );
-        } else if (channel === "whatsapp" && patient.phone) {
-          await sendWhatsApp(patient.phone, content);
+        let sendResult = null;
+        let sendSuccess = false;
+
+        // Validate contact existence and send
+        if (channel === "sms") {
+          if (!patient.phone) {
+            // Mark as failed if no phone
+            finalCommunication = await prisma.communication.update({
+              where: { id: communication.id },
+              data: { status: "failed" },
+            });
+          } else {
+            sendResult = await sendSMS(patient.phone, content);
+            sendSuccess = sendResult?.success === true;
+          }
+        } else if (channel === "email") {
+          if (!patient.email) {
+            // Mark as failed if no email
+            finalCommunication = await prisma.communication.update({
+              where: { id: communication.id },
+              data: { status: "failed" },
+            });
+          } else {
+            sendResult = await sendEmail(
+              patient.email,
+              type === "reminder" ? "Appointment Reminder" : type,
+              content,
+            );
+            sendSuccess = sendResult?.success === true;
+          }
+        } else if (channel === "whatsapp") {
+          if (!patient.phone) {
+            // Mark as failed if no phone
+            finalCommunication = await prisma.communication.update({
+              where: { id: communication.id },
+              data: { status: "failed" },
+            });
+          } else {
+            sendResult = await sendWhatsApp(patient.phone, content);
+            sendSuccess = sendResult?.success === true;
+          }
         }
 
-        // Update status to sent
-        await prisma.communication.update({
-          where: { id: communication.id },
-          data: {
-            status: "sent",
-            sentAt: new Date(),
-          },
-        });
+        // Update status based on send result
+        if (sendSuccess) {
+          finalCommunication = await prisma.communication.update({
+            where: { id: communication.id },
+            data: {
+              status: "sent",
+              sentAt: new Date(),
+            },
+          });
+        } else if (sendResult && !sendSuccess) {
+          finalCommunication = await prisma.communication.update({
+            where: { id: communication.id },
+            data: { status: "failed" },
+          });
+        }
       } catch (sendError) {
         console.error("Failed to send communication:", sendError);
-        await prisma.communication.update({
+        finalCommunication = await prisma.communication.update({
           where: { id: communication.id },
           data: { status: "failed" },
         });
       }
     }
 
-    // Audit log
-    await createAuditLog({
+    // Audit log (fire-and-forget, best-effort)
+    createAuditLog({
       userId,
       organizationId: orgId,
       action: "CREATE",
       entityType: "Communication",
       entityId: communication.id,
       afterState: JSON.stringify({ channel, type, patientId }),
+    }).catch((auditError) => {
+      console.error("Failed to create audit log:", auditError);
+      // Silently fail - audit logging is best-effort
     });
 
-    return NextResponse.json(communication, { status: 201 });
+    return NextResponse.json(finalCommunication, { status: 201 });
   } catch (error) {
     console.error("POST /api/communications error:", error);
     return NextResponse.json(
