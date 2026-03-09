@@ -1,101 +1,257 @@
 "use client";
 
-import * as React from "react";
-import { motion } from "framer-motion";
-import { MessageSquare, Mail, MessageCircle, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MessageCircle, Mail, MessageSquare, Phone } from "lucide-react";
+import { AddCommunicationDialog } from "@/components/communications/add-communication-dialog";
+import { toast } from "sonner";
 
-const channelIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  sms: MessageCircle,
-  email: Mail,
-  whatsapp: Send,
-};
+interface Communication {
+  id: string;
+  patient: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  channel: string;
+  type: string;
+  status: string;
+  content: string;
+  sentAt: string | null;
+  createdAt: string;
+}
 
 export default function CommunicationsPage() {
-  const [comms, setComms] = React.useState<Array<{
-    id: string;
-    channel: string;
-    type: string;
-    status: string;
-    content: string;
-    sentAt: string | null;
-    patient?: { firstName: string; lastName: string };
-    createdAt: string;
-  }>>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [communications, setCommunications] = useState<Communication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [channelFilter, setChannelFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  React.useEffect(() => {
-    fetch("/api/communications")
-      .then((r) => r.json())
-      .then((data) => { setComms(Array.isArray(data) ? data : []); })
-      .catch(() => setComms([]))
-      .finally(() => setLoading(false));
-  }, []);
+  // Map handlers to convert "all" sentinel to empty string for API queries
+  const handleChannelChange = (value: string) => {
+    setChannelFilter(value === "all" ? "" : value);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value === "all" ? "" : value);
+  };
+
+  useEffect(() => {
+    fetchCommunications();
+  }, [channelFilter, statusFilter]);
+
+  async function fetchCommunications() {
+    try {
+      const params = new URLSearchParams();
+      if (channelFilter) params.append("channel", channelFilter);
+      if (statusFilter) params.append("status", statusFilter);
+
+      const response = await fetch(`/api/communications?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to fetch");
+      const data = await response.json();
+      setCommunications(data);
+    } catch (error) {
+      toast.error("Failed to fetch communications");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const filteredComms = communications.filter((comm) => {
+    const patientName =
+      `${comm.patient.firstName} ${comm.patient.lastName}`.toLowerCase();
+    return patientName.includes(searchTerm.toLowerCase());
+  });
+
+  const channelIcon = (channel: string) => {
+    switch (channel) {
+      case "sms":
+        return <MessageSquare className="w-4 h-4 text-blue-500" />;
+      case "email":
+        return <Mail className="w-4 h-4 text-purple-500" />;
+      case "whatsapp":
+        return <MessageCircle className="w-4 h-4 text-green-500" />;
+      default:
+        return <Phone className="w-4 h-4" />;
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-100 text-yellow-800",
+      sent: "bg-green-100 text-green-800",
+      delivered: "bg-blue-100 text-blue-800",
+      failed: "bg-red-100 text-red-800",
+      scheduled: "bg-gray-100 text-gray-800",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  const stats = {
+    total: communications.length,
+    sent: communications.filter((c) => c.status === "sent").length,
+    failed: communications.filter((c) => c.status === "failed").length,
+    pending: communications.filter((c) => c.status === "pending").length,
+  };
 
   return (
-    <motion.div
-      className="flex flex-col gap-8 w-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Communications & Engagement</h1>
-        <Button className="bg-indigo-600 hover:bg-indigo-700">Send Message</Button>
+        <div>
+          <h1 className="text-3xl font-bold">Communications</h1>
+          <p className="text-gray-600 mt-1">
+            Manage SMS, email, and WhatsApp campaigns
+          </p>
+        </div>
+        <AddCommunicationDialog onSuccess={() => fetchCommunications()} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Communication Log
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="p-8 text-center text-neutral-500">Loading...</div>
-          ) : comms.length === 0 ? (
-            <div className="p-8 text-center text-neutral-500 border rounded-[5px]">
-              No communications yet. SMS, email, and WhatsApp interactions will appear here.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {comms.map((c) => {
-                const Icon = channelIcons[c.channel] ?? MessageSquare;
-                return (
-                  <div
-                    key={c.id}
-                    className="flex gap-4 p-4 border rounded-[5px] hover:bg-neutral-50 dark:hover:bg-neutral-800/30"
-                  >
-                    <div className="w-10 h-10 rounded-[5px] bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                      <Icon className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">
-                          {c.patient ? `${c.patient.firstName} ${c.patient.lastName}` : "Unknown"}
-                        </span>
-                        <span className="text-neutral-500">•</span>
-                        <span className="text-neutral-500 capitalize">{c.channel}</span>
-                        <span className={`ml-auto px-2 py-0.5 rounded-[5px] text-xs ${
-                          c.status === "sent" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40" : "bg-neutral-100"
-                        }`}>
-                          {c.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1 truncate">{c.content}</p>
-                      <p className="text-xs text-neutral-400 mt-1">
-                        {c.sentAt ? new Date(c.sentAt).toLocaleString() : new Date(c.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-sm font-medium text-gray-600">Total Sent</div>
+          <div className="text-2xl font-bold mt-2">{stats.sent}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-gray-600">Pending</div>
+          <div className="text-2xl font-bold mt-2 text-yellow-600">
+            {stats.pending}
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-gray-600">Failed</div>
+          <div className="text-2xl font-bold mt-2 text-red-600">
+            {stats.failed}
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-sm font-medium text-gray-600">
+            Total Messages
+          </div>
+          <div className="text-2xl font-bold mt-2">{stats.total}</div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="flex gap-4">
+          <Input
+            placeholder="Search by patient name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+          <Select
+            value={channelFilter || "all"}
+            onValueChange={handleChannelChange}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Channels" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Channels</SelectItem>
+              <SelectItem value="sms">SMS</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={statusFilter || "all"}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="delivered">Delivered</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </Card>
-    </motion.div>
+
+      {/* Communications Table */}
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Patient</TableHead>
+              <TableHead>Channel</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Content Preview</TableHead>
+              <TableHead>Sent At</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : filteredComms.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  No communications found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredComms.map((comm) => (
+                <TableRow key={comm.id}>
+                  <TableCell className="font-medium">
+                    {comm.patient.firstName} {comm.patient.lastName}
+                  </TableCell>
+                  <TableCell className="flex items-center gap-2">
+                    {channelIcon(comm.channel)}
+                    {comm.channel.toUpperCase()}
+                  </TableCell>
+                  <TableCell className="capitalize">{comm.type}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${statusBadge(
+                        comm.status,
+                      )}`}
+                    >
+                      {comm.status}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600 max-w-xs truncate">
+                    {comm.content}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {comm.sentAt ? new Date(comm.sentAt).toLocaleString() : "-"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
   );
 }
