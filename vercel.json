@@ -1,5 +1,5 @@
 {
-  "buildCommand": "DATABASE_URL='postgresql://localhost/dummy' bun run build",
+  "buildCommand": "bun run build",
   "devCommand": "bun run dev",
   "installCommand": "bun install",
   "framework": "nextjs"
