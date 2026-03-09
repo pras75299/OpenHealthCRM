@@ -12,9 +12,10 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify CRON secret
+    // Verify CRON secret (optional during development)
     const secret = request.headers.get("x-cron-secret");
-    if (secret !== process.env.CRON_SECRET) {
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && secret !== cronSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
