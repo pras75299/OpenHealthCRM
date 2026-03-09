@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     console.error("Error fetching invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     if (!patientId || !Array.isArray(lineItems) || lineItems.length === 0) {
       return NextResponse.json(
         { error: "Patient ID and line items are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -68,19 +68,26 @@ export async function POST(request: Request) {
     }
 
     let totalAmount = 0;
-    const validLineItems = lineItems.map((li: { description?: string; quantity?: number; unitPrice?: number; cptCode?: string }) => {
-      const qty = typeof li.quantity === "number" ? li.quantity : 1;
-      const price = typeof li.unitPrice === "number" ? li.unitPrice : 0;
-      const amount = qty * price;
-      totalAmount += amount;
-      return {
-        description: li.description || "Line item",
-        quantity: qty,
-        unitPrice: new Prisma.Decimal(price),
-        amount: new Prisma.Decimal(amount),
-        cptCode: li.cptCode || null,
-      };
-    });
+    const validLineItems = lineItems.map(
+      (li: {
+        description?: string;
+        quantity?: number;
+        unitPrice?: number;
+        cptCode?: string;
+      }) => {
+        const qty = typeof li.quantity === "number" ? li.quantity : 1;
+        const price = typeof li.unitPrice === "number" ? li.unitPrice : 0;
+        const amount = qty * price;
+        totalAmount += amount;
+        return {
+          description: li.description || "Line item",
+          quantity: qty,
+          unitPrice: new Prisma.Decimal(price),
+          amount: new Prisma.Decimal(amount),
+          cptCode: li.cptCode || null,
+        };
+      },
+    );
 
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -135,7 +142,7 @@ export async function POST(request: Request) {
     console.error("Error creating invoice:", error);
     return NextResponse.json(
       { error: "Failed to create invoice" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
