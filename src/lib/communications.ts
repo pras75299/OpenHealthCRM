@@ -3,24 +3,44 @@
 const twilio = require("twilio");
 const nodemailer = require("nodemailer");
 
-// Twilio Configuration
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN,
-);
+// Twilio Configuration - lazy initialization to avoid build errors
+let twilioClient: any = null;
+
+function getTwilioClient() {
+  if (!twilioClient && process.env.TWILIO_ACCOUNT_SID) {
+    try {
+      twilioClient = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN,
+      );
+    } catch (error) {
+      console.error("Failed to initialize Twilio:", error);
+      return null;
+    }
+  }
+  return twilioClient;
+}
 
 // SendGrid/Email Configuration
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
+    user: process.env.EMAIL_USER || "test@gmail.com",
+    pass: process.env.EMAIL_PASSWORD || "test",
   },
 });
 
 export async function sendSMS(phoneNumber: string, message: string) {
   try {
-    const result = await twilioClient.messages.create({
+    const client = getTwilioClient();
+    if (!client) {
+      return {
+        success: false,
+        messageId: null,
+        error: "Twilio not configured",
+      };
+    }
+    const result = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber,
@@ -67,7 +87,16 @@ export async function sendWhatsApp(
   mediaUrl?: string,
 ) {
   try {
-    const result = await twilioClient.messages.create({
+    const client = getTwilioClient();
+    if (!client) {
+      return {
+        success: false,
+        messageId: null,
+        status: "failed",
+        error: "Twilio not configured",
+      };
+    }
+    const result = await client.messages.create({
       body: message,
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${phoneNumber}`,
