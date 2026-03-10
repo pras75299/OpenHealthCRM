@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { Prisma } from "@prisma/client";
 
 export async function GET() {
   try {
@@ -18,42 +17,32 @@ export async function GET() {
       orderBy: { startTime: "asc" },
     });
 
-    const mapped = appointments.map(
-      (
-        a: Prisma.AppointmentGetPayload<{
-          include: {
-            provider: true;
-            patient: { select: { firstName: true; lastName: true } };
-            room: true;
-          };
-        }>,
-      ) => {
-        const timeString = a.startTime.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const durationMs = a.endTime.getTime() - a.startTime.getTime();
-        const durationMins = Math.round(durationMs / 60000);
-        return {
-          id: a.id,
-          patientId: a.patientId,
-          patient: a.patient
-            ? `${a.patient.firstName} ${a.patient.lastName}`
-            : null,
-          providerId: a.providerId,
-          provider: a.provider?.name ?? "Unknown Provider",
-          roomId: a.roomId,
-          room: a.room?.name ?? null,
-          date: a.startTime.toISOString().split("T")[0],
-          time: timeString,
-          startTime: a.startTime.toISOString(),
-          endTime: a.endTime.toISOString(),
-          duration: `${durationMins} min`,
-          type: a.appointmentType ?? a.notes ?? "Standard",
-          status: a.status,
-        };
-      },
-    );
+    const mapped = appointments.map((a: any) => {
+      const timeString = a.startTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const durationMs = a.endTime.getTime() - a.startTime.getTime();
+      const durationMins = Math.round(durationMs / 60000);
+      return {
+        id: a.id,
+        patientId: a.patientId,
+        patient: a.patient
+          ? `${a.patient.firstName} ${a.patient.lastName}`
+          : null,
+        providerId: a.providerId,
+        provider: a.provider?.name ?? "Unknown Provider",
+        roomId: a.roomId,
+        room: a.room?.name ?? null,
+        date: a.startTime.toISOString().split("T")[0],
+        time: timeString,
+        startTime: a.startTime.toISOString(),
+        endTime: a.endTime.toISOString(),
+        duration: `${durationMins} min`,
+        type: a.appointmentType ?? a.notes ?? "Standard",
+        status: a.status,
+      };
+    });
 
     return NextResponse.json(mapped);
   } catch (error) {
