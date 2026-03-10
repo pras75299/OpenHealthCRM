@@ -5,7 +5,7 @@ import { getCurrentUserId } from "@/lib/auth";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -27,7 +27,8 @@ export async function PATCH(
     if (status !== undefined) updateData.status = status;
     if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
     if (priority !== undefined) updateData.priority = priority;
-    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (dueDate !== undefined)
+      updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
     const updated = await prisma.$transaction(async (tx: any) => {
       const t = await tx.task.update({
@@ -64,7 +65,7 @@ export async function PATCH(
     console.error("Error updating task:", error);
     return NextResponse.json(
       { error: "Failed to update task" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

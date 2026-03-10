@@ -52,7 +52,7 @@ function mapPatientToResponse(p: {
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -82,14 +82,14 @@ export async function GET(
     console.error("Error fetching patient:", error);
     return NextResponse.json(
       { error: "Failed to fetch patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -112,7 +112,7 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -155,8 +155,7 @@ export async function PATCH(
             data: {
               name: data.emergencyContactName ?? existing.emergencyContact.name,
               phone:
-                data.emergencyContactPhone ??
-                existing.emergencyContact.phone,
+                data.emergencyContactPhone ?? existing.emergencyContact.phone,
               relationship:
                 data.emergencyContactRelationship ??
                 existing.emergencyContact.relationship,
@@ -206,13 +205,13 @@ export async function PATCH(
                 }
               : null,
           }
-        : mapPatientToResponse(updated)
+        : mapPatientToResponse(updated),
     );
   } catch (error) {
     console.error("Error updating patient:", error);
     return NextResponse.json(
       { error: "Failed to update patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     console.error("Error fetching prescriptions:", error);
     return NextResponse.json(
       { error: "Failed to fetch prescriptions" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     if (!patientId) {
       return NextResponse.json(
         { error: "Patient ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     console.error("Error creating prescription:", error);
     return NextResponse.json(
       { error: "Failed to create prescription" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

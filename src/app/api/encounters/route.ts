@@ -57,33 +57,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    const encounter = await prisma.$transaction(
-      async (tx: any) => {
-        const enc = await tx.encounter.create({
-          data: {
-            organizationId: orgId,
-            patientId,
-            appointmentId: appointmentId || null,
-            startTime: new Date(),
-            status: "in_progress",
-            encounterType: encounterType || "office_visit",
-          },
-        });
+    const encounter = await prisma.$transaction(async (tx: any) => {
+      const enc = await tx.encounter.create({
+        data: {
+          organizationId: orgId,
+          patientId,
+          appointmentId: appointmentId || null,
+          startTime: new Date(),
+          status: "in_progress",
+          encounterType: encounterType || "office_visit",
+        },
+      });
 
-        await tx.auditLog.create({
-          data: {
-            organizationId: orgId,
-            userId,
-            action: "CREATE",
-            entityType: "Encounter",
-            entityId: enc.id,
-            afterState: JSON.stringify(enc),
-          },
-        });
+      await tx.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId,
+          action: "CREATE",
+          entityType: "Encounter",
+          entityId: enc.id,
+          afterState: JSON.stringify(enc),
+        },
+      });
 
-        return enc;
-      },
-    );
+      return enc;
+    });
 
     return NextResponse.json(encounter, { status: 201 });
   } catch (error) {

@@ -31,7 +31,7 @@ export async function hasPermission(
   userId: string,
   orgId: string,
   action: string,
-  resource?: string
+  resource?: string,
 ): Promise<boolean> {
   const userRole = await prisma.userRole.findFirst({
     where: { userId },
@@ -45,7 +45,7 @@ export async function hasPermission(
   const permissions = userRole.role.permissions;
   const hasAction = permissions.some(
     (p: any) =>
-      p.action === action && (resource ? p.resource === resource : true)
+      p.action === action && (resource ? p.resource === resource : true),
   );
   return hasAction;
 }

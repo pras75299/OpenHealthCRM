@@ -37,33 +37,31 @@ export async function POST(request: Request) {
     }
 
     const item = await prisma.$transaction(async (tx: any) => {
-        const inv = await tx.inventoryItem.create({
-          data: {
-            organizationId: orgId,
-            name: String(name),
-            sku: sku || null,
-            category: category || null,
-            quantity: typeof quantity === "number" ? quantity : 0,
-            reorderLevel:
-              typeof reorderLevel === "number" ? reorderLevel : null,
-            unit: unit || "each",
-          },
-        });
+      const inv = await tx.inventoryItem.create({
+        data: {
+          organizationId: orgId,
+          name: String(name),
+          sku: sku || null,
+          category: category || null,
+          quantity: typeof quantity === "number" ? quantity : 0,
+          reorderLevel: typeof reorderLevel === "number" ? reorderLevel : null,
+          unit: unit || "each",
+        },
+      });
 
-        await tx.auditLog.create({
-          data: {
-            organizationId: orgId,
-            userId,
-            action: "CREATE",
-            entityType: "InventoryItem",
-            entityId: inv.id,
-            afterState: JSON.stringify(inv),
-          },
-        });
+      await tx.auditLog.create({
+        data: {
+          organizationId: orgId,
+          userId,
+          action: "CREATE",
+          entityType: "InventoryItem",
+          entityId: inv.id,
+          afterState: JSON.stringify(inv),
+        },
+      });
 
-        return inv;
-      },
-    );
+      return inv;
+    });
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {

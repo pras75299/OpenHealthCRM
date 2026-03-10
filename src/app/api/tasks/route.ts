@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json(
       { error: "Failed to fetch tasks" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -45,13 +45,19 @@ export async function POST(request: Request) {
     const userId = await getCurrentUserId(orgId);
 
     const body = await request.json();
-    const { title, description, status, priority, dueDate, patientId, assigneeId, taskType } = body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      dueDate,
+      patientId,
+      assigneeId,
+      taskType,
+    } = body;
 
     if (!title || typeof title !== "string") {
-      return NextResponse.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
     const task = await prisma.$transaction(async (tx: any) => {
@@ -98,7 +104,7 @@ export async function POST(request: Request) {
     console.error("Error creating task:", error);
     return NextResponse.json(
       { error: "Failed to create task" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

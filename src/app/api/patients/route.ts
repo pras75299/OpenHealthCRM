@@ -66,7 +66,7 @@ export async function GET() {
     console.error("Error fetching patients:", error);
     return NextResponse.json(
       { error: "Failed to fetch patients" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     console.error("Error creating patient:", error);
     return NextResponse.json(
       { error: "Failed to create patient" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
