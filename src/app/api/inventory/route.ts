@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId } from "@/lib/auth";
@@ -18,7 +19,7 @@ export async function GET() {
     console.error("Error fetching inventory:", error);
     return NextResponse.json(
       { error: "Failed to fetch inventory" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -33,45 +34,45 @@ export async function POST(request: Request) {
     const { name, sku, category, quantity, reorderLevel, unit } = body;
 
     if (!name || typeof name !== "string") {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const item = await prisma.$transaction(async (tx) => {
-      const inv = await tx.inventoryItem.create({
-        data: {
-          organizationId: orgId,
-          name: String(name),
-          sku: sku || null,
-          category: category || null,
-          quantity: typeof quantity === "number" ? quantity : 0,
-          reorderLevel: typeof reorderLevel === "number" ? reorderLevel : null,
-          unit: unit || "each",
-        },
-      });
+    const item = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const inv = await tx.inventoryItem.create({
+          data: {
+            organizationId: orgId,
+            name: String(name),
+            sku: sku || null,
+            category: category || null,
+            quantity: typeof quantity === "number" ? quantity : 0,
+            reorderLevel:
+              typeof reorderLevel === "number" ? reorderLevel : null,
+            unit: unit || "each",
+          },
+        });
 
-      await tx.auditLog.create({
-        data: {
-          organizationId: orgId,
-          userId,
-          action: "CREATE",
-          entityType: "InventoryItem",
-          entityId: inv.id,
-          afterState: JSON.stringify(inv),
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            organizationId: orgId,
+            userId,
+            action: "CREATE",
+            entityType: "InventoryItem",
+            entityId: inv.id,
+            afterState: JSON.stringify(inv),
+          },
+        });
 
-      return inv;
-    });
+        return inv;
+      },
+    );
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     console.error("Error creating inventory item:", error);
     return NextResponse.json(
       { error: "Failed to create inventory item" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

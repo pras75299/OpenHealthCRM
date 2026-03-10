@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      documents.map((d) => ({
+      documents.map((d: any) => ({
         id: d.id,
         patientId: d.patientId,
         patientName: `${d.patient.firstName} ${d.patient.lastName}`,

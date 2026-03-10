@@ -91,46 +91,48 @@ export async function POST(request: Request) {
 
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-    const invoice = await prisma.$transaction(async (tx) => {
-      const inv = await tx.invoice.create({
-        data: {
-          organizationId: orgId,
-          patientId,
-          invoiceNumber,
-          totalAmount: new Prisma.Decimal(totalAmount),
-          amountPaid: new Prisma.Decimal(0),
-          status: "draft",
-          dueDate: dueDate ? new Date(dueDate) : null,
-          idempotencyKey: idempotencyKey || null,
-        },
-      });
-
-      for (const li of validLineItems) {
-        await tx.invoiceLineItem.create({
+    const invoice = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const inv = await tx.invoice.create({
           data: {
-            invoiceId: inv.id,
-            description: li.description,
-            quantity: li.quantity,
-            unitPrice: li.unitPrice,
-            amount: li.amount,
-            cptCode: li.cptCode,
+            organizationId: orgId,
+            patientId,
+            invoiceNumber,
+            totalAmount: new Prisma.Decimal(totalAmount),
+            amountPaid: new Prisma.Decimal(0),
+            status: "draft",
+            dueDate: dueDate ? new Date(dueDate) : null,
+            idempotencyKey: idempotencyKey || null,
           },
         });
-      }
 
-      await tx.auditLog.create({
-        data: {
-          organizationId: orgId,
-          userId,
-          action: "CREATE",
-          entityType: "Invoice",
-          entityId: inv.id,
-          afterState: JSON.stringify({ invoiceNumber, totalAmount }),
-        },
-      });
+        for (const li of validLineItems) {
+          await tx.invoiceLineItem.create({
+            data: {
+              invoiceId: inv.id,
+              description: li.description,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+              amount: li.amount,
+              cptCode: li.cptCode,
+            },
+          });
+        }
 
-      return inv;
-    });
+        await tx.auditLog.create({
+          data: {
+            organizationId: orgId,
+            userId,
+            action: "CREATE",
+            entityType: "Invoice",
+            entityId: inv.id,
+            afterState: JSON.stringify({ invoiceNumber, totalAmount }),
+          },
+        });
+
+        return inv;
+      },
+    );
 
     const withItems = await prisma.invoice.findUnique({
       where: { id: invoice.id },
