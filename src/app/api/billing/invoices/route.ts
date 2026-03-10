@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId } from "@/lib/auth";
@@ -82,8 +81,8 @@ export async function POST(request: Request) {
         return {
           description: li.description || "Line item",
           quantity: qty,
-          unitPrice: new Prisma.Decimal(price),
-          amount: new Prisma.Decimal(amount),
+          unitPrice: price.toString(),
+          amount: amount.toString(),
           cptCode: li.cptCode || null,
         };
       },
@@ -92,14 +91,14 @@ export async function POST(request: Request) {
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
     const invoice = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
+      async (tx: any) => {
         const inv = await tx.invoice.create({
           data: {
             organizationId: orgId,
             patientId,
             invoiceNumber,
-            totalAmount: new Prisma.Decimal(totalAmount),
-            amountPaid: new Prisma.Decimal(0),
+            totalAmount: totalAmount.toString(),
+            amountPaid: "0",
             status: "draft",
             dueDate: dueDate ? new Date(dueDate) : null,
             idempotencyKey: idempotencyKey || null,

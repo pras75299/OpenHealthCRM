@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const task = await prisma.$transaction(async (tx) => {
+    const task = await prisma.$transaction(async (tx: any) => {
       const t = await tx.task.create({
         data: {
           organizationId: orgId,

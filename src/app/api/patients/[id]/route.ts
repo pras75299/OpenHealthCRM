@@ -118,7 +118,7 @@ export async function PATCH(
 
     const data = parsed.data;
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: any) => {
       const patient = await tx.patient.update({
         where: { id },
         data: {

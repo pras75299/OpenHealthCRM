@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
     const data = parsed.data;
 
-    const newPatient = await prisma.$transaction(async (tx) => {
+    const newPatient = await prisma.$transaction(async (tx: any) => {
       const patient = await tx.patient.create({
         data: {
           organizationId: orgId,

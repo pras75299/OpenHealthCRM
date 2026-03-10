@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId } from "@/lib/auth";
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     const encounter = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
+      async (tx: any) => {
         const enc = await tx.encounter.create({
           data: {
             organizationId: orgId,

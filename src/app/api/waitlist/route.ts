@@ -18,7 +18,7 @@ export async function GET() {
         });
 
         return NextResponse.json(
-            entries.map((e) => ({
+            entries.map((e: any) => ({
                 id: e.id,
                 patientId: e.patientId,
                 patientName: `${e.patient.firstName} ${e.patient.lastName}`,

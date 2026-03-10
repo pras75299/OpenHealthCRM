@@ -29,7 +29,7 @@ export async function PATCH(
     if (priority !== undefined) updateData.priority = priority;
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: any) => {
       const t = await tx.task.update({
         where: { id },
         data: updateData,

@@ -44,7 +44,7 @@ export async function hasPermission(
   if (!userRole) return false;
   const permissions = userRole.role.permissions;
   const hasAction = permissions.some(
-    (p) =>
+    (p: any) =>
       p.action === action && (resource ? p.resource === resource : true)
   );
   return hasAction;

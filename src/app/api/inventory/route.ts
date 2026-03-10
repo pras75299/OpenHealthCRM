@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId } from "@/lib/auth";
@@ -37,8 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const item = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
+    const item = await prisma.$transaction(async (tx: any) => {
         const inv = await tx.inventoryItem.create({
           data: {
             organizationId: orgId,

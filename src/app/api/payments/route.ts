@@ -113,7 +113,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      payments.map((p) => ({
+      payments.map((p: any) => ({
         id: p.id,
         invoiceId: p.invoiceId,
         invoiceNumber: p.invoice.invoiceNumber,

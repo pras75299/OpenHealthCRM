@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const prescription = await prisma.$transaction(async (tx) => {
+    const prescription = await prisma.$transaction(async (tx: any) => {
       const rx = await tx.prescription.create({
         data: {
           organizationId: orgId,
