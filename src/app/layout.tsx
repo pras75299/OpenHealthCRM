@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://yourdomain.com"),
+  metadataBase: new URL("https://pras75299-openhealthcrm.vercel.app/"),
   title: {
     default: "Healthcare CRM | Patient, Appointment & Billing Management",
     template: "%s | Healthcare CRM",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     title: "Healthcare CRM | Patient, Appointment & Billing Management",
     description:
       "A modern healthcare CRM to manage patients, appointments, billing, prescriptions, communications, and analytics.",
-    url: "https://yourdomain.com",
+    url: "https://pras75299-openhealthcrm.vercel.app/",
     siteName: "Healthcare CRM",
     locale: "en_US",
     type: "website",
@@ -83,7 +83,7 @@ export default function RootLayout({
     operatingSystem: "Web",
     description:
       "A comprehensive healthcare CRM for managing patients, appointments, encounters, prescriptions, billing, inventory, communications, and analytics.",
-    url: "https://yourdomain.com",
+    url: "https://pras75299-openhealthcrm.vercel.app/",
   };
 
   return (

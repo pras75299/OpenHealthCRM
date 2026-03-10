@@ -2,9 +2,9 @@ import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-// determine if we're running in a Vercel build environment or explicitly skipping DB init
-const isVercel = !!process.env.VERCEL;
-const skipDbInit = process.env.SKIP_DB_INIT === "true" || isVercel;
+// Skip DB init only when explicitly requested (e.g. for CI builds without a DB).
+// Do NOT skip on Vercel runtime - API routes need the real Prisma client.
+const skipDbInit = process.env.SKIP_DB_INIT === "true";
 
 const connectionString = process.env.DATABASE_URL || "";
 
