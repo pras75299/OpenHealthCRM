@@ -116,6 +116,7 @@ model Patient {
   bloodType           String?
   allergies           String?             // JSON array or comma-separated
   primaryCareProvider String?
+  passwordHash        String?
   emergencyContact    EmergencyContact?
   familyHistory       String?             // JSON for genetic/family history
   status              String              @default("Active") // Active, Inactive, Archived
@@ -133,6 +134,20 @@ model Patient {
   invoices            Invoice[]
   documents           Document[]
   waitlistEntries     WaitlistEntry[]
+  sessions            PatientSession[]
+}
+
+model PatientSession {
+  id         String    @id @default(cuid())
+  patientId  String
+  patient    Patient   @relation(fields: [patientId], references: [id])
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model EmergencyContact {

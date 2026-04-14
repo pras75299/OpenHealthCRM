@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
 
     const body = await request.json();
     const { name, type, triggerType } = body;

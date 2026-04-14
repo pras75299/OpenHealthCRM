@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { patientCreateSchema, patientUpdateSchema } from "@/lib/validations";
 
@@ -76,6 +76,16 @@ export async function POST(request: Request) {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWritePatients = await hasPermission(
+      userId,
+      orgId,
+      "patients:write",
+      "patients",
+    );
+
+    if (!canWritePatients) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const parsed = patientCreateSchema.safeParse(body);

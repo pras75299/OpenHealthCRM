@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
 
 export async function PATCH(
@@ -11,7 +11,11 @@ export async function PATCH(
     try {
         const orgId = await getOrgId();
         assertOrgScope(orgId);
-        const userId = await getCurrentUserId(orgId);
+        const authz = await requireAnyPermission(orgId, [
+            { action: "patients:write", resource: "patients" },
+        ]);
+        if (authz.response) return authz.response;
+        const { userId } = authz;
 
         const { id } = await params;
         const body = await request.json();

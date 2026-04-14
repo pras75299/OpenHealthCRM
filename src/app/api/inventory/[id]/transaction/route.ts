@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 
 export async function POST(
   request: Request,
@@ -10,6 +11,10 @@ export async function POST(
     const { id: itemId } = await params;
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "billing:write", resource: "billing" },
+    ]);
+    if (authz.response) return authz.response;
 
     const body = await request.json();
     const { type, quantity, reason } = body;

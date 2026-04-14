@@ -23,70 +23,41 @@ interface PatientData {
 
 export default function PatientPortalPage() {
   const [patient, setPatient] = React.useState<PatientData | null>(null);
-  const [appointments, setAppointments] = React.useState<any[]>([]);
-  const [labResults, setLabResults] = React.useState<any[]>([]);
+  const [appointments, setAppointments] = React.useState<Array<{ id: string; type: string; provider: string; status: string }>>([]);
+  const [labResults, setLabResults] = React.useState<Array<{ id: string; testName: string; resultValue: string | null; unit: string | null; status: string }>>([]);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
   React.useEffect(() => {
-    // Check if patient is logged in
-    const token = localStorage.getItem("patientToken");
-    const patientId = localStorage.getItem("patientId");
-    const patientName = localStorage.getItem("patientName");
-
-    if (!token || !patientId) {
-      router.push("/patient-login");
-      return;
-    }
-
-    // Set patient data from localStorage
-    setPatient({
-      id: patientId,
-      firstName: patientName?.split(" ")[0] || "",
-      lastName: patientName?.split(" ").slice(1).join(" ") || "",
-      email: "",
-      mrn: "",
-    });
-
-    // Fetch patient's data
-    fetchPatientData(patientId, token);
+    fetchPatientData();
   }, [router]);
 
-  const fetchPatientData = async (patientId: string, token: string) => {
+  const fetchPatientData = async () => {
     try {
       setLoading(true);
+      const overviewResponse = await fetch("/api/patient-portal/overview");
 
-      // Fetch appointments
-      const aptsResponse = await fetch(
-        `/api/appointments?patientId=${patientId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (aptsResponse.ok) {
-        const apts = await aptsResponse.json();
-        setAppointments(apts.slice(0, 3)); // Show only upcoming 3
+      if (!overviewResponse.ok) {
+        throw new Error("Failed to fetch patient data");
       }
 
-      // Fetch lab results
-      const labsResponse = await fetch(`/api/labs?patientId=${patientId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (labsResponse.ok) {
-        const labs = await labsResponse.json();
-        setLabResults(labs.slice(0, 3)); // Show only latest 3
-      }
+      const overview = await overviewResponse.json();
+      setPatient(overview.patient);
+      setAppointments(overview.appointments);
+      setLabResults(overview.labResults);
     } catch (error) {
       console.error("Error fetching patient data:", error);
+      router.push("/patient-login");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("patientToken");
-    localStorage.removeItem("patientId");
-    localStorage.removeItem("patientName");
+  const handleLogout = async () => {
+    await fetch("/api/patient-auth/logout", {
+      method: "POST",
+    });
+
     toast.success("Logged out successfully");
     router.push("/patient-login");
   };

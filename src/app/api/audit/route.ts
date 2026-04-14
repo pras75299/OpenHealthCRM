@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 
 export async function GET(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:read", resource: "patients" },
+      { action: "encounters:read", resource: "encounters" },
+      { action: "billing:read", resource: "billing" },
+    ]);
+    if (authz.response) return authz.response;
 
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get("entityType");

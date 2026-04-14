@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/auth";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
 import { sendSMS, sendEmail, sendWhatsApp } from "@/lib/communications";
 
@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
 
     const searchParams = request.nextUrl.searchParams;
     const patientId = searchParams.get("patientId");
@@ -53,7 +52,12 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, channel, type, content, scheduledFor } = body;

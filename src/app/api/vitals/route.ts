@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 import { vitalSchema } from "@/lib/validations";
 
 export async function GET(request: Request) {
@@ -17,6 +18,13 @@ export async function GET(request: Request) {
         { error: "Patient ID is required" },
         { status: 400 }
       );
+    }
+
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, organizationId: orgId },
+    });
+    if (!patient) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
     const vitals = await prisma.vital.findMany({
@@ -41,6 +49,11 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "encounters:write", resource: "encounters" },
+      { action: "patients:write", resource: "patients" },
+    ]);
+    if (authz.response) return authz.response;
 
     const body = await request.json();
     const { patientId, encounterId, ...vitalData } = body;

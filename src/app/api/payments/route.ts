@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import stripe from "@/lib/stripe";
 
@@ -10,6 +10,16 @@ export async function POST(request: Request) {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWriteBilling = await hasPermission(
+      userId,
+      orgId,
+      "billing:write",
+      "billing",
+    );
+
+    if (!canWriteBilling) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { invoiceId, amount, currency = "usd", description } = body;

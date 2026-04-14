@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import * as crypto from "crypto";
+import { verifyPasswordHash } from "@/lib/password";
+import { createPatientSession } from "@/lib/patient-auth";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, mrn } = body;
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const mrn = typeof body.mrn === "string" ? body.mrn.trim() : "";
 
     if (!email || !password || !mrn) {
       return NextResponse.json(
@@ -27,32 +30,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // For demo purposes, accept any non-empty password
-    // In production, hash and compare passwords properly
-    if (!password) {
+    if (!verifyPasswordHash(patient.passwordHash, password)) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
       );
     }
 
-    // Create a session token
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    // Store token in database (you might want a separate table for this)
-    // For now, we'll just return the token
-    const sessionData = {
-      token,
+    const { rawToken, expiresAt } = await createPatientSession({
       patientId: patient.id,
-      organizationId: patient.organizationId,
-      expiresAt: expiresAt.toISOString(),
-    };
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
+    });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
-        token,
         patient: {
           id: patient.id,
           firstName: patient.firstName,
@@ -64,6 +57,16 @@ export async function POST(request: Request) {
       },
       { status: 200 },
     );
+
+    response.cookies.set("patient_session", rawToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      expires: expiresAt,
+    });
+
+    return response;
   } catch (error) {
     console.error("Patient auth error:", error);
     return NextResponse.json(

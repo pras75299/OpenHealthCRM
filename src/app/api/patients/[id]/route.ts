@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { patientUpdateSchema } from "@/lib/validations";
 
 function mapPatientToResponse(p: {
@@ -96,6 +96,16 @@ export async function PATCH(
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWritePatients = await hasPermission(
+      userId,
+      orgId,
+      "patients:write",
+      "patients",
+    );
+
+    if (!canWritePatients) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const existing = await prisma.patient.findFirst({
       where: { id, organizationId: orgId },

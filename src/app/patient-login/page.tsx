@@ -44,15 +44,7 @@ export default function PatientLoginPage() {
         throw new Error(error.error || "Login failed");
       }
 
-      const data = await response.json();
-
-      // Store token and patient info
-      localStorage.setItem("patientToken", data.token);
-      localStorage.setItem("patientId", data.patient.id);
-      localStorage.setItem(
-        "patientName",
-        `${data.patient.firstName} ${data.patient.lastName}`,
-      );
+      await response.json();
 
       toast.success("Login successful!");
       router.push("/patient-portal");
@@ -125,7 +117,7 @@ export default function PatientLoginPage() {
             </Button>
 
             <p className="text-xs text-neutral-500 text-center">
-              Don't have an account? Contact your healthcare provider to
+              Don&apos;t have an account? Contact your healthcare provider to
               register.
             </p>
           </form>

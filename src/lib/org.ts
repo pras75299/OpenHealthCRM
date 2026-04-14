@@ -1,16 +1,53 @@
-import { prisma } from "./prisma";
+import { auth } from "@/auth";
 
 /**
- * Get the current organization ID for multi-tenant scoping.
- * In production: resolve from authenticated user/session.
- * For now: returns first organization (dev seed).
+ * Error used for auth or tenant context failures.
+ */
+export class AuthContextError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "AuthContextError";
+    this.status = status;
+  }
+}
+
+export function isAuthContextError(error: unknown): error is AuthContextError {
+  return error instanceof AuthContextError;
+}
+
+export async function requireOrgContext() {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const organizationId = session?.user?.organizationId;
+
+  if (!session?.user?.email || !userId) {
+    throw new AuthContextError(401, "Authentication required");
+  }
+
+  if (!organizationId) {
+    throw new AuthContextError(403, "Organization context is required");
+  }
+
+  return {
+    session,
+    userId,
+    organizationId,
+    roles: session.user.roles ?? [],
+  };
+}
+
+export async function getOrgIdFromSession(): Promise<string> {
+  const { organizationId } = await requireOrgContext();
+  return organizationId;
+}
+
+/**
+ * Backwards-compatible alias for route handlers that still import getOrgId().
  */
 export async function getOrgId(): Promise<string> {
-  const org = await prisma.organization.findFirst();
-  if (!org) {
-    throw new Error("No organization found. Please seed the database.");
-  }
-  return org.id;
+  return getOrgIdFromSession();
 }
 
 /**

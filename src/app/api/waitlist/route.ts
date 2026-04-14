@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
 
 export async function GET() {
@@ -45,7 +45,12 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, preferredDate, notes } = body;

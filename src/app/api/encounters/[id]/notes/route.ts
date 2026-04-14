@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { soapNoteSchema } from "@/lib/validations";
 
 export async function POST(
@@ -13,7 +13,11 @@ export async function POST(
     const { id: encounterId } = await params;
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "encounters:write", resource: "encounters" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const encounter = await prisma.encounter.findFirst({
       where: { id: encounterId, organizationId: orgId },

@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { requireOrgContext } from "./org";
 
 export type RoleName =
   | "Super Admin"
@@ -10,42 +11,73 @@ export type RoleName =
   | "Pharmacist";
 
 /**
- * Get current user ID. In production: from session/JWT.
- * For dev: returns first user in org.
+ * Get current user ID from session.
  */
-export async function getCurrentUserId(orgId: string): Promise<string> {
-  const user = await prisma.user.findFirst({
-    where: { organizationId: orgId },
-  });
-  if (!user) {
-    throw new Error("No user found for organization.");
-  }
-  return user.id;
+export async function getCurrentUserId(_orgId?: string): Promise<string> {
+  const { userId } = await requireOrgContext();
+  return userId;
 }
 
-/**
- * Check if user has required permission.
- * In production: integrate with RolePermission.
- */
 export async function hasPermission(
   userId: string,
   orgId: string,
   action: string,
   resource?: string,
 ): Promise<boolean> {
-  const userRole = await prisma.userRole.findFirst({
-    where: { userId },
+  const user = await prisma.user.findFirst({
+    where: { id: userId, organizationId: orgId },
     include: {
-      role: {
-        include: { permissions: true },
+      userRoles: {
+        include: {
+          role: {
+            include: { permissions: true },
+          },
+        },
       },
     },
   });
-  if (!userRole) return false;
-  const permissions = userRole.role.permissions;
-  const hasAction = permissions.some(
-    (p: any) =>
-      p.action === action && (resource ? p.resource === resource : true),
+
+  if (!user) {
+    return false;
+  }
+
+  if (
+    user.userRoles.some(
+      (entry: { role: { name: string } }) => entry.role.name === "Super Admin",
+    )
+  ) {
+    return true;
+  }
+
+  return user.userRoles.some(
+    (entry: { role: { permissions: { action: string; resource: string | null }[] } }) =>
+      entry.role.permissions.some(
+        (permission: { action: string; resource: string | null }) =>
+          permission.action === action &&
+          (resource
+            ? permission.resource === resource || permission.resource === null
+            : true),
+      ),
   );
-  return hasAction;
+}
+
+export async function hasAnyPermission(
+  userId: string,
+  orgId: string,
+  permissions: Array<{ action: string; resource?: string }>,
+) {
+  for (const permission of permissions) {
+    const allowed = await hasPermission(
+      userId,
+      orgId,
+      permission.action,
+      permission.resource,
+    );
+
+    if (allowed) {
+      return true;
+    }
+  }
+
+  return false;
 }

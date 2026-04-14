@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 
 export async function PATCH(
   request: Request,
@@ -11,7 +11,12 @@ export async function PATCH(
     const { id } = await params;
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const existing = await prisma.task.findFirst({
       where: { id, organizationId: orgId },

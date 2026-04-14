@@ -2,11 +2,18 @@ require("dotenv").config();
 const { Pool } = require("pg");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
+const { randomBytes, scryptSync } = require("crypto");
 
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const derivedKey = scryptSync(password, salt, 64).toString("hex");
+  return `scrypt$${salt}$${derivedKey}`;
+}
 
 async function main() {
   console.log("Starting seed...");
@@ -44,7 +51,7 @@ async function main() {
         organizationId: defaultOrg.id,
         email: "admin@acmeclinic.com",
         name: "Admin Doctor",
-        passwordHash: "hashed_password_placeholder",
+        passwordHash: hashPassword("admin123"),
       },
     });
   }
@@ -112,6 +119,8 @@ async function main() {
           lastName: "Doe",
           email: "john.doe@example.com",
           phone: "555-0101",
+          mrn: "MRN-1001",
+          passwordHash: hashPassword("patient123"),
           dateOfBirth: new Date("1980-05-15"),
         },
         {
@@ -120,6 +129,8 @@ async function main() {
           lastName: "Smith",
           email: "jane.smith@example.com",
           phone: "555-0202",
+          mrn: "MRN-1002",
+          passwordHash: hashPassword("patient123"),
           dateOfBirth: new Date("1992-11-20"),
         },
         {
@@ -128,6 +139,8 @@ async function main() {
           lastName: "Johnson",
           email: "alice.j@example.com",
           phone: "555-0303",
+          mrn: "MRN-1003",
+          passwordHash: hashPassword("patient123"),
           dateOfBirth: new Date("1975-02-10"),
         },
       ],
@@ -135,6 +148,10 @@ async function main() {
     console.log("Created 3 patients");
   } else {
     console.log("Patients already exist");
+    await prisma.patient.updateMany({
+      where: { organizationId: defaultOrg.id, passwordHash: null },
+      data: { passwordHash: hashPassword("patient123") },
+    });
   }
 }
 

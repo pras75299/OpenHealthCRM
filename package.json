@@ -8,10 +8,12 @@
   },
   "scripts": {
     "postinstall": "prisma generate",
+    "prepare": "husky",
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "db:seed": "node prisma/seed.js",
     "db:migrate": "prisma migrate dev"
   },
@@ -58,6 +60,8 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.5.8",
     "postcss-import": "^16.1.1",
     "shadcn": "^3.8.5",
