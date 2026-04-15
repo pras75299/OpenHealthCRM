@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import {
@@ -14,6 +14,7 @@ import {
   FlaskConical,
   HelpCircle,
   Home,
+  Microscope,
   Menu,
   Moon,
   Package,
@@ -35,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useMedical } from "@/context/MedicalContext";
 
 const navGroups = [
   {
@@ -255,9 +257,13 @@ function DashboardHeader({
   open: boolean;
   setOpen: (value: boolean) => void;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { patients, appointments } = useMedical();
   const [mounted, setMounted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -266,6 +272,137 @@ function DashboardHeader({
     const rootPath = `/${pathname.split("/").filter(Boolean)[0] ?? ""}`;
     return routeTitles[rootPath] ?? "Workspace";
   }, [pathname]);
+
+  const searchResults = useMemo(() => {
+    const normalized = searchQuery.trim().toLowerCase();
+    if (!normalized) {
+      return [];
+    }
+
+    const patientMatches = patients
+      .filter((patient) => {
+        return [
+          patient.firstName,
+          patient.lastName,
+          patient.mrn,
+          patient.phone,
+          patient.email,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized);
+      })
+      .slice(0, 4)
+      .map((patient) => ({
+        id: `patient-${patient.id}`,
+        href: `/patients?q=${encodeURIComponent(`${patient.firstName} ${patient.lastName}`)}`,
+        title: `${patient.firstName} ${patient.lastName}`,
+        subtitle: `Patient · ${patient.mrn}`,
+        icon: Users,
+      }));
+
+    const appointmentMatches = appointments
+      .filter((appointment) => {
+        return [appointment.patientId, appointment.provider, appointment.type, appointment.date]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalized);
+      })
+      .slice(0, 4)
+      .map((appointment) => ({
+        id: `appointment-${appointment.id}`,
+        href: `/appointments?q=${encodeURIComponent(appointment.type)}`,
+        title: `${appointment.type} · ${appointment.date}`,
+        subtitle: `Appointment · ${appointment.provider}`,
+        icon: Calendar,
+      }));
+
+    const workspaceMatches = Object.entries(routeTitles)
+      .filter(([href, value]) => href !== pathname && value.toLowerCase().includes(normalized))
+      .slice(0, 4)
+      .map(([href, value]) => ({
+        id: `route-${href}`,
+        href,
+        title: value,
+        subtitle: "Workspace",
+        icon: Home,
+      }));
+
+    return [...patientMatches, ...appointmentMatches, ...workspaceMatches].slice(0, 6);
+  }, [appointments, pathname, patients, searchQuery]);
+
+  const notifications = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const items: Array<{
+      id: string;
+      title: string;
+      description: string;
+      href: string;
+      icon: React.ElementType;
+    }> = [];
+
+    const todaysAppointments = appointments.filter((appointment) => appointment.date === today);
+    if (todaysAppointments.length > 0) {
+      items.push({
+        id: "appointments-today",
+        title: `${todaysAppointments.length} appointments today`,
+        description: "Review today's live schedule and patient flow.",
+        href: "/appointments",
+        icon: Calendar,
+      });
+    }
+
+    const confirmedAppointments = appointments.filter(
+      (appointment) => appointment.status?.toLowerCase() === "confirmed",
+    );
+    if (confirmedAppointments.length > 0) {
+      items.push({
+        id: "confirmed-appointments",
+        title: `${confirmedAppointments.length} confirmed visits`,
+        description: "Patients are ready for intake or provider review.",
+        href: "/appointments",
+        icon: Bell,
+      });
+    }
+
+    if (patients.length > 0) {
+      items.push({
+        id: "patients-directory",
+        title: `${patients.length} patients in directory`,
+        description: "Open the patient workspace to review records.",
+        href: "/patients",
+        icon: Users,
+      });
+    }
+
+    items.push({
+      id: "labs-review",
+      title: "Lab review queue available",
+      description: "Check recent abnormal and pending results.",
+      href: "/labs",
+      icon: Microscope,
+    });
+
+    return items.slice(0, 4);
+  }, [appointments, patients]);
+
+  const unreadNotifications = notifications.length;
+
+  const openSearchResult = (href: string) => {
+    setSearchQuery("");
+    setIsSearchFocused(false);
+    router.push(href);
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (searchResults[0]) {
+      openSearchResult(searchResults[0].href);
+      return;
+    }
+
+    router.push("/patients");
+  };
 
   return (
     <header className="sticky top-0 z-20 px-4 pt-4 sm:px-6 lg:px-8">
@@ -291,20 +428,99 @@ function DashboardHeader({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden items-center gap-3 rounded-[18px] border border-white/55 bg-white/60 px-4 py-2.5 text-sm text-muted-foreground shadow-sm md:flex dark:border-white/6 dark:bg-white/[0.03]">
-            <Search className="h-4 w-4" />
-            <span>Search patients, visits, claims</span>
+          <div className="relative hidden md:block">
+            <form onSubmit={handleSearchSubmit}>
+              <label className="flex w-[30rem] items-center gap-3 rounded-[18px] border border-white/55 bg-white/60 px-4 py-2.5 text-sm text-muted-foreground shadow-sm dark:border-white/6 dark:bg-white/[0.03]">
+                <Search className="h-4 w-4" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => setIsSearchFocused(false), 120);
+                  }}
+                  placeholder="Search patients, visits, claims"
+                  className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
+                  aria-label="Search patients, visits, claims"
+                />
+              </label>
+            </form>
+
+            {isSearchFocused && searchResults.length > 0 ? (
+              <div className="surface-panel absolute left-0 top-[calc(100%+0.75rem)] z-30 w-full rounded-[24px] border border-white/60 p-2 dark:border-white/6">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => openSearchResult(result.href)}
+                    className="flex w-full items-center gap-3 rounded-[18px] px-3 py-3 text-left transition-colors hover:bg-white/65 dark:hover:bg-white/[0.05]"
+                  >
+                    <div className="grid size-10 shrink-0 place-content-center rounded-[14px] bg-primary/10 text-primary">
+                      <result.icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {result.title}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {result.subtitle}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative rounded-[16px] border border-white/55 bg-white/60 dark:border-white/6 dark:bg-white/[0.03]"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute right-2 top-2 size-2 rounded-full bg-amber-500" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative rounded-[16px] border border-white/55 bg-white/60 dark:border-white/6 dark:bg-white/[0.03]"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadNotifications > 0 ? (
+                  <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-content-center rounded-full border-2 border-background bg-amber-500 px-1 text-[10px] font-semibold text-white">
+                    {unreadNotifications}
+                  </span>
+                ) : null}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 rounded-[18px] p-2">
+              <DropdownMenuLabel className="px-3 py-2">Notifications</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-muted-foreground">
+                  No new notifications.
+                </div>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    asChild
+                    className="rounded-[14px] px-3 py-3 focus:bg-accent/60"
+                  >
+                    <Link href={notification.href} className="flex items-start gap-3">
+                      <div className="grid size-9 shrink-0 place-content-center rounded-[12px] bg-primary/10 text-primary">
+                        <notification.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          {notification.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {notification.description}
+                        </p>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {mounted ? (
             <Button

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { Calendar as CalendarIcon, Clock, Filter, List, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -151,9 +152,19 @@ function EditAppointmentDialog({
 }
 
 export default function AppointmentsPage() {
+  const searchParams = useSearchParams()
   const { appointments, patients, addAppointment, updateAppointment } = useMedical()
+  const [searchQuery, setSearchQuery] = React.useState("")
   const [view, setView] = React.useState<"list" | "calendar">("list")
   const [editAptId, setEditAptId] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    const query = searchParams.get("q") ?? ""
+    setSearchQuery(query)
+    if (query) {
+      setView("list")
+    }
+  }, [searchParams])
 
   const statusMap: Record<string, Appointment["status"]> = {
     scheduled: "Scheduled",
@@ -197,6 +208,27 @@ export default function AppointmentsPage() {
     toast.success("Appointment cancelled.")
   }
 
+  const filteredAppointments = appointments.filter((appointment) => {
+    const normalized = searchQuery.trim().toLowerCase()
+    if (!normalized) {
+      return true
+    }
+
+    const patient = patients.find((entry) => entry.id === appointment.patientId)
+    const patientName = patient ? `${patient.firstName} ${patient.lastName}` : ""
+
+    return [
+      patientName,
+      appointment.provider,
+      appointment.type,
+      appointment.date,
+      appointment.status,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalized)
+  })
+
   return (
     <div className="flex flex-col gap-6 w-full h-full">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -223,11 +255,20 @@ export default function AppointmentsPage() {
 
       <div className="bg-white dark:bg-neutral-900 border rounded-[5px] flex-1 shadow-sm flex flex-col pt-2">
          <div className="px-6 py-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-             <div className="flex items-center gap-2 text-lg font-medium">
-               <CalendarIcon className="w-5 h-5 text-neutral-500" />
-               {view === "list"
-                 ? "Today, Oct 24"
-                 : "Month view"}
+             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+               <div className="flex items-center gap-2 text-lg font-medium">
+                 <CalendarIcon className="w-5 h-5 text-neutral-500" />
+                 {view === "list"
+                   ? "Today, Oct 24"
+                   : "Month view"}
+               </div>
+               <Input
+                 type="search"
+                 placeholder="Search appointments, provider, or patient..."
+                 className="w-full sm:max-w-sm"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+               />
              </div>
              <div className="flex gap-2">
                  <Button variant="outline" size="sm" className="flex items-center">
@@ -288,7 +329,7 @@ export default function AppointmentsPage() {
                      </tr>
                  </thead>
                  <tbody className="divide-y text-neutral-800 dark:text-neutral-200">
-                     {appointments.map((apt: Appointment) => {
+                     {filteredAppointments.map((apt: Appointment) => {
                          const patient = patients.find(p => p.id === apt.patientId);
                          const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
                          return (
@@ -351,4 +392,3 @@ export default function AppointmentsPage() {
     </div>
   )
 }
-

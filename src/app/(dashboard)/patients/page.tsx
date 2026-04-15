@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { Filter as FilterIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,8 +23,14 @@ import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet
 import { AddPatientDialog } from "@/components/patients/add-patient-dialog"
 
 export default function PatientsPage() {
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = React.useState("")
   const { patients, refetchPatients } = useMedical()
+
+  React.useEffect(() => {
+    const query = searchParams.get("q") ?? ""
+    setSearchQuery(query)
+  }, [searchParams])
 
   const handleExport = () => {
     toast.success("Exporting patient list to CSV...")
@@ -136,4 +143,3 @@ export default function PatientsPage() {
     </div>
   )
 }
-

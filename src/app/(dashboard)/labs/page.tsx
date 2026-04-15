@@ -120,6 +120,7 @@ export default function LabResultsPage() {
   };
 
   const isAbnormal = (status: string) => status === "abnormal";
+  const isHighlightedRow = (status: string) => status === "abnormal";
 
   return (
     <div className="flex flex-col gap-6 w-full h-full">
@@ -248,7 +249,11 @@ export default function LabResultsPage() {
                 {filteredResults.map((result) => (
                   <tr
                     key={result.id}
-                    className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition ${isAbnormal(result.status) ? "bg-red-50" : ""}`}
+                    className={`transition ${
+                      isHighlightedRow(result.status)
+                        ? "bg-red-50 text-red-950 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-50 dark:hover:bg-red-950/40"
+                        : "hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                    }`}
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -273,7 +278,13 @@ export default function LabResultsPage() {
                               {result.resultValue} {result.unit || ""}
                             </p>
                             {result.referenceRange && (
-                              <p className="text-xs text-neutral-500">
+                              <p
+                                className={`text-xs ${
+                                  isHighlightedRow(result.status)
+                                    ? "text-red-700 dark:text-red-200/80"
+                                    : "text-neutral-500"
+                                }`}
+                              >
                                 Range: {result.referenceRange}
                               </p>
                             )}
@@ -306,12 +317,28 @@ export default function LabResultsPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={
+                              isHighlightedRow(result.status)
+                                ? "text-red-900 hover:bg-red-200/60 dark:text-red-100 dark:hover:bg-red-900/30"
+                                : undefined
+                            }
+                          >
                             View Report
                           </Button>
                         </a>
                       ) : (
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={
+                            isHighlightedRow(result.status)
+                              ? "text-red-900 hover:bg-red-200/60 dark:text-red-100 dark:hover:bg-red-900/30"
+                              : undefined
+                          }
+                        >
                           View
                         </Button>
                       )}
