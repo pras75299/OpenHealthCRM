@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revokePatientSessionFromRequest } from "@/lib/patient-auth";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
-    console.error("Patient logout error:", error);
+    logServerError("Patient logout error", error);
     return NextResponse.json({ error: "Logout failed" }, { status: 500 });
   }
 }

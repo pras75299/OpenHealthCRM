@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function PATCH(
     request: Request,
@@ -58,7 +59,7 @@ export async function PATCH(
             signedAt: updated.signedAt?.toISOString() ?? null,
         });
     } catch (error) {
-        console.error("Error updating consent:", error);
+        logServerError("Error updating consent", error);
         return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });
     }
 }

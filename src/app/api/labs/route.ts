@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching lab results:", error);
+    logServerError("Error fetching lab results", error);
     return NextResponse.json(
       { error: "Failed to fetch lab results" },
       { status: 500 },
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating lab result:", error);
+    logServerError("Error creating lab result", error);
     return NextResponse.json(
       { error: "Failed to create lab result" },
       { status: 500 },

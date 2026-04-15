@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { prescriptionSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(prescriptions);
   } catch (error) {
-    console.error("Error fetching prescriptions:", error);
+    logServerError("Error fetching prescriptions", error);
     return NextResponse.json(
       { error: "Failed to fetch prescriptions" },
       { status: 500 },
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(prescription, { status: 201 });
   } catch (error) {
-    console.error("Error creating prescription:", error);
+    logServerError("Error creating prescription", error);
     return NextResponse.json(
       { error: "Failed to create prescription" },
       { status: 500 },

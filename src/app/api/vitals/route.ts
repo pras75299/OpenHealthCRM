@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { vitalSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(vitals);
   } catch (error) {
-    console.error("Error fetching vitals:", error);
+    logServerError("Error fetching vitals", error);
     return NextResponse.json(
       { error: "Failed to fetch vitals" },
       { status: 500 }
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(vital, { status: 201 });
   } catch (error) {
-    console.error("Error creating vital:", error);
+    logServerError("Error creating vital", error);
     return NextResponse.json(
       { error: "Failed to create vital" },
       { status: 500 }

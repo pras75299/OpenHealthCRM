@@ -4,6 +4,7 @@ import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { patientCreateSchema, patientUpdateSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
 
 function mapPatientToResponse(p: {
   id: string;
@@ -63,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json(patients.map(mapPatientToResponse));
   } catch (error) {
-    console.error("Error fetching patients:", error);
+    logServerError("Error fetching patients", error);
     return NextResponse.json(
       { error: "Failed to fetch patients" },
       { status: 500 },
@@ -149,7 +150,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(mapPatientToResponse(newPatient), { status: 201 });
   } catch (error) {
-    console.error("Error creating patient:", error);
+    logServerError("Error creating patient", error);
     return NextResponse.json(
       { error: "Failed to create patient" },
       { status: 500 },

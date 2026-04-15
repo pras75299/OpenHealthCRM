@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function PATCH(
   request: Request,
@@ -67,7 +68,7 @@ export async function PATCH(
 
     return NextResponse.json(withRelations ?? updated);
   } catch (error) {
-    console.error("Error updating task:", error);
+    logServerError("Error updating task", error);
     return NextResponse.json(
       { error: "Failed to update task" },
       { status: 500 },

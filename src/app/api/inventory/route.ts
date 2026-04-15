@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET() {
   try {
@@ -15,7 +16,7 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (error) {
-    console.error("Error fetching inventory:", error);
+    logServerError("Error fetching inventory", error);
     return NextResponse.json(
       { error: "Failed to fetch inventory" },
       { status: 500 },
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
-    console.error("Error creating inventory item:", error);
+    logServerError("Error creating inventory item", error);
     return NextResponse.json(
       { error: "Failed to create inventory item" },
       { status: 500 },

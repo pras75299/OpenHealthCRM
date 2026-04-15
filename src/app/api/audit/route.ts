@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(logs);
   } catch (error) {
-    console.error("Error fetching audit logs:", error);
+    logServerError("Error fetching audit logs", error);
     return NextResponse.json(
       { error: "Failed to fetch audit logs" },
       { status: 500 }

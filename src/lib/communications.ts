@@ -1,5 +1,7 @@
 // Multi-channel communications library
 // Dependencies: npm install twilio nodemailer
+import { logServerError } from "@/lib/safe-logger";
+
 const twilio = require("twilio");
 const nodemailer = require("nodemailer");
 
@@ -14,7 +16,7 @@ function getTwilioClient() {
         process.env.TWILIO_AUTH_TOKEN,
       );
     } catch (error) {
-      console.error("Failed to initialize Twilio:", error);
+      logServerError("Failed to initialize Twilio", error);
       return null;
     }
   }
@@ -51,7 +53,7 @@ export async function sendSMS(phoneNumber: string, message: string) {
       status: result.status,
     };
   } catch (error) {
-    console.error("SMS send failed:", error);
+    logServerError("SMS send failed", error);
     throw error;
   }
 }
@@ -76,7 +78,7 @@ export async function sendEmail(
       status: "sent",
     };
   } catch (error) {
-    console.error("Email send failed:", error);
+    logServerError("Email send failed", error);
     throw error;
   }
 }
@@ -108,7 +110,7 @@ export async function sendWhatsApp(
       status: result.status,
     };
   } catch (error) {
-    console.error("WhatsApp send failed:", error);
+    logServerError("WhatsApp send failed", error);
     throw error;
   }
 }

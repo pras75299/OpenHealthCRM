@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPatientSessionFromRequest } from "@/lib/patient-auth";
 import { prisma } from "@/lib/prisma";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
       })),
     });
   } catch (error) {
-    console.error("Patient portal overview error:", error);
+    logServerError("Patient portal overview error", error);
     return NextResponse.json({ error: "Failed to fetch patient portal data" }, { status: 500 });
   }
 }

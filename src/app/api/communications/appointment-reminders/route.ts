@@ -5,6 +5,7 @@ import {
   sendEmail,
   renderAppointmentReminder,
 } from "@/lib/communications";
+import { logServerError } from "@/lib/safe-logger";
 
 /**
  * CRON endpoint: Sends appointment reminders
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
               status: "sent",
             });
           } catch (error) {
-            console.error("Failed to send SMS reminder:", error);
+            logServerError("Failed to send SMS reminder", error);
           }
         }
 
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
               status: "sent",
             });
           } catch (error) {
-            console.error("Failed to send email reminder:", error);
+            logServerError("Failed to send email reminder", error);
           }
         }
 
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
       message: `Sent ${reminders.length} appointment reminders`,
     });
   } catch (error) {
-    console.error("Appointment reminder CRON error:", error);
+    logServerError("Appointment reminder CRON error", error);
     return NextResponse.json(
       { error: "Failed to send appointment reminders" },
       { status: 500 },

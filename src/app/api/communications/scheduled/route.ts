@@ -9,6 +9,7 @@ import {
   sendWhatsApp,
   renderAppointmentReminder,
 } from "@/lib/communications";
+import { logServerError } from "@/lib/safe-logger";
 
 /**
  * CRON endpoint: Processes scheduled communications
@@ -66,7 +67,9 @@ export async function POST(request: NextRequest) {
 
         sent++;
       } catch (error) {
-        console.error(`Failed to send communication ${comm.id}:`, error);
+        logServerError("Failed to send scheduled communication", error, {
+          communicationId: comm.id,
+        });
 
         // Mark as failed
         await prisma.communication.update({
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
       message: `Processed ${scheduledComms.length} scheduled communications`,
     });
   } catch (error) {
-    console.error("CRON error:", error);
+    logServerError("Scheduled communications CRON error", error);
     return NextResponse.json(
       { error: "Failed to process scheduled communications" },
       { status: 500 },

@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { Activity, ArrowRight, ShieldPlus, Stethoscope, TimerReset } from "lucide-react";
 
 type LoginFormProps = {
   callbackUrl: string;
@@ -39,53 +40,125 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.24em] text-slate-500">
-            Staff Access
-          </p>
-          <h1 className="text-3xl font-semibold text-slate-950">Sign in</h1>
-          <p className="text-sm text-slate-600">
-            Use your staff credentials to access organization-scoped dashboard routes.
-          </p>
-        </div>
+    <main className="hero-glow flex min-h-screen items-center justify-center px-6 py-12">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-[36px] border border-white/60 surface-panel lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="relative hidden min-h-[640px] flex-col justify-between border-r border-white/55 bg-[linear-gradient(160deg,rgba(21,107,139,0.96),rgba(9,60,84,0.96))] p-10 text-white lg:flex">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/80">
+              <Activity className="h-3.5 w-3.5" />
+              Clinical Command Center
+            </div>
+            <h1 className="mt-6 max-w-md text-5xl font-semibold leading-[1.02] tracking-[-0.05em]">
+              Modern care operations without dashboard clutter.
+            </h1>
+            <p className="mt-5 max-w-lg text-base leading-7 text-white/74">
+              Coordinate patients, schedules, claims, labs, inventory, and follow-ups from one shared workspace built for real clinic flow.
+            </p>
+          </div>
 
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Email</span>
-            <input
-              autoComplete="email"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-500"
-              name="email"
-              onChange={(event) => setEmail(event.target.value)}
-              type="email"
-              value={email}
-            />
-          </label>
+          <div className="grid gap-3">
+            {[
+              {
+                icon: ShieldPlus,
+                title: "Org-scoped access",
+                copy: "Staff sessions are constrained to organization data and audited routes.",
+              },
+              {
+                icon: TimerReset,
+                title: "Fast front-desk rhythm",
+                copy: "Triage visits, update appointments, and move care teams without jumping tabs.",
+              },
+              {
+                icon: Stethoscope,
+                title: "Built for providers",
+                copy: "Clinical notes, billing context, and patient history stay in the same operational frame.",
+              },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="rounded-[24px] border border-white/12 bg-white/8 p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="grid size-10 shrink-0 place-content-center rounded-[16px] bg-white/14">
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{item.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-white/72">{item.copy}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-slate-700">Password</span>
-            <input
-              autoComplete="current-password"
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-500"
-              name="password"
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              value={password}
-            />
-          </label>
+        <section className="flex min-h-[640px] items-center bg-white/72 px-6 py-8 dark:bg-slate-950/30 sm:px-10">
+          <div className="mx-auto w-full max-w-md">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                Staff Access
+              </p>
+              <h2 className="text-4xl font-semibold tracking-[-0.05em] text-foreground">
+                Sign in to the clinic workspace
+              </h2>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Use your staff credentials to access organization-scoped routes for patients, appointments, clinical operations, and billing.
+              </p>
+            </div>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <form className="mt-10 space-y-5" onSubmit={handleSubmit}>
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">Email</span>
+                <input
+                  autoComplete="email"
+                  className="h-13 w-full rounded-[20px] border border-border bg-white/80 px-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-white/[0.04]"
+                  name="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  type="email"
+                  value={email}
+                />
+              </label>
 
-          <button
-            className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
-            disabled={isSubmitting}
-            type="submit"
-          >
-            {isSubmitting ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">Password</span>
+                <input
+                  autoComplete="current-password"
+                  className="h-13 w-full rounded-[20px] border border-border bg-white/80 px-4 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-white/[0.04]"
+                  name="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  type="password"
+                  value={password}
+                />
+              </label>
+
+              {error ? (
+                <p className="rounded-[18px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
+                  {error}
+                </p>
+              ) : null}
+
+              <button
+                className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-[20px] bg-linear-to-r from-primary to-cyan-500 px-4 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? "Signing in..." : "Enter workspace"}
+                {!isSubmitting ? <ArrowRight className="h-4 w-4" /> : null}
+              </button>
+            </form>
+
+            <div className="mt-8 grid gap-3 rounded-[24px] border border-white/60 bg-white/60 p-4 text-sm dark:border-white/6 dark:bg-white/[0.03]">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Default route</span>
+                <span className="font-medium text-foreground">Patients</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Session mode</span>
+                <span className="font-medium text-foreground">Credential-based</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

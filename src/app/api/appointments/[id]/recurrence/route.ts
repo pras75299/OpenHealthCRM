@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(
   request: Request,
@@ -59,7 +60,7 @@ export async function POST(
 
     return NextResponse.json(updatedAppointment, { status: 200 });
   } catch (error) {
-    console.error("Error updating appointment recurrence:", error);
+    logServerError("Error updating appointment recurrence", error);
     return NextResponse.json(
       { error: "Failed to update appointment recurrence" },
       { status: 500 },

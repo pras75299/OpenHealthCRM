@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching documents:", error);
+    logServerError("Error fetching documents", error);
     return NextResponse.json(
       { error: "Failed to fetch documents" },
       { status: 500 },
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating document:", error);
+    logServerError("Error creating document", error);
     return NextResponse.json(
       { error: "Failed to create document" },
       { status: 500 },

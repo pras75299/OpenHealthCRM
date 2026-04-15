@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function PATCH(
     request: Request,
@@ -58,7 +59,7 @@ export async function PATCH(
             preferredDate: updated.preferredDate?.toISOString() ?? null,
         });
     } catch (error) {
-        console.error("Error updating waitlist entry:", error);
+        logServerError("Error updating waitlist entry", error);
         return NextResponse.json({ error: "Failed to update waitlist entry" }, { status: 500 });
     }
 }

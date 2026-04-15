@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(campaigns);
   } catch (error) {
-    console.error("GET /api/communications/campaigns error:", error);
+    logServerError("GET /api/communications/campaigns error", error);
     return NextResponse.json(
       { error: "Failed to fetch campaigns" },
       { status: 500 },
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(campaign, { status: 201 });
   } catch (error) {
-    console.error("POST /api/communications/campaigns error:", error);
+    logServerError("POST /api/communications/campaigns error", error);
     return NextResponse.json(
       { error: "Failed to create campaign" },
       { status: 500 },

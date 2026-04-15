@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET() {
   try {
@@ -33,7 +34,7 @@ export async function GET() {
       })),
     );
   } catch (error) {
-    console.error("Error fetching waitlist:", error);
+    logServerError("Error fetching waitlist", error);
     return NextResponse.json(
       { error: "Failed to fetch waitlist" },
       { status: 500 },
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating waitlist entry:", error);
+    logServerError("Error creating waitlist entry", error);
     return NextResponse.json(
       { error: "Failed to add to waitlist" },
       { status: 500 },

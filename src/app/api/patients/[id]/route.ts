@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { patientUpdateSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
 
 function mapPatientToResponse(p: {
   id: string;
@@ -79,7 +80,7 @@ export async function GET(
         : null,
     });
   } catch (error) {
-    console.error("Error fetching patient:", error);
+    logServerError("Error fetching patient", error);
     return NextResponse.json(
       { error: "Failed to fetch patient" },
       { status: 500 },
@@ -218,7 +219,7 @@ export async function PATCH(
         : mapPatientToResponse(updated),
     );
   } catch (error) {
-    console.error("Error updating patient:", error);
+    logServerError("Error updating patient", error);
     return NextResponse.json(
       { error: "Failed to update patient" },
       { status: 500 },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(encounters);
   } catch (error) {
-    console.error("Error fetching encounters:", error);
+    logServerError("Error fetching encounters", error);
     return NextResponse.json(
       { error: "Failed to fetch encounters" },
       { status: 500 },
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(encounter, { status: 201 });
   } catch (error) {
-    console.error("Error creating encounter:", error);
+    logServerError("Error creating encounter", error);
     return NextResponse.json(
       { error: "Failed to create encounter" },
       { status: 500 },

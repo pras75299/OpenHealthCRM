@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import stripe from "@/lib/stripe";
+import { logServerError } from "@/lib/safe-logger";
 
 interface StripeEvent {
   type: string;
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     const signature = request.headers.get("stripe-signature") || "";
 
     if (!webhookSecret) {
-      console.error("STRIPE_WEBHOOK_SECRET not configured");
+      logServerError("STRIPE_WEBHOOK_SECRET not configured");
       return NextResponse.json(
         { error: "Webhook secret not configured" },
         { status: 500 },
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
-      console.error("Webhook signature verification failed:", err);
+      logServerError("Webhook signature verification failed", err);
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logServerError("Webhook error", error);
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 },

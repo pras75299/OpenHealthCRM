@@ -4,6 +4,7 @@ import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import stripe from "@/lib/stripe";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(request: Request) {
   try {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating payment intent:", error);
+    logServerError("Error creating payment intent", error);
     return NextResponse.json(
       { error: "Failed to create payment intent" },
       { status: 500 },
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching payments:", error);
+    logServerError("Error fetching payments", error);
     return NextResponse.json(
       { error: "Failed to fetch payments" },
       { status: 500 },

@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { logServerError } from "@/lib/safe-logger";
 
 // Skip DB init only when explicitly requested (e.g. for CI builds without a DB).
 // Do NOT skip on Vercel runtime - API routes need the real Prisma client.
@@ -20,10 +21,7 @@ if (!skipDbInit && connectionString) {
     });
     adapter = new PrismaPg(pool);
   } catch (err) {
-    console.warn(
-      "Prisma pool initialization failed, continuing without adapter:",
-      err,
-    );
+    logServerError("Prisma pool initialization failed, continuing without adapter", err);
   }
 }
 

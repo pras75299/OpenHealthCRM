@@ -44,5 +44,5 @@ next-env.d.ts
 .agent/
 
 # markdown files (documentation)
-*.md
-!README.md
+# *.md
+# !README.md

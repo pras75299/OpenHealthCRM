@@ -3,18 +3,16 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import {
-  Users,
-  Calendar,
   Activity,
-  Clock,
+  ArrowRight,
   Bell,
+  Calendar,
+  Clock,
+  HeartPulse,
+  Users,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-
 import { useMedical, Patient } from "@/context/MedicalContext";
 import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet";
 import { AddPatientDialog } from "@/components/patients/add-patient-dialog";
@@ -24,28 +22,33 @@ export default function DashboardPage() {
   const { patients, appointments, refetchPatients } = useMedical();
 
   const today = new Date().toISOString().split("T")[0];
-  const cancelledStatus = (s: string) =>
-    s?.toLowerCase() === "cancelled";
+  const cancelledStatus = (status: string) => status?.toLowerCase() === "cancelled";
 
   const appointmentsToday = appointments.filter(
-    (a) =>
-      a.date === today && !cancelledStatus(a.status)
+    (appointment) => appointment.date === today && !cancelledStatus(appointment.status),
   );
+
   const activeEncounters = appointments.filter(
-    (a) =>
-      a.status?.toLowerCase() === "in waiting room" ||
-      a.status?.toLowerCase() === "confirmed"
+    (appointment) =>
+      appointment.status?.toLowerCase() === "in waiting room" ||
+      appointment.status?.toLowerCase() === "confirmed",
   ).length;
 
-  const getAptTime = (a: { startTime?: string; date: string; time: string }) =>
-    a.startTime ? new Date(a.startTime).getTime() : new Date(`${a.date}T${a.time}`).getTime();
+  const getAppointmentTime = (appointment: {
+    startTime?: string;
+    date: string;
+    time: string;
+  }) =>
+    appointment.startTime
+      ? new Date(appointment.startTime).getTime()
+      : new Date(`${appointment.date}T${appointment.time}`).getTime();
 
   const upcomingAppointments = appointments
-    .filter((a) => {
-      if (cancelledStatus(a.status)) return false;
-      return getAptTime(a) >= Date.now();
+    .filter((appointment) => {
+      if (cancelledStatus(appointment.status)) return false;
+      return getAppointmentTime(appointment) >= Date.now();
     })
-    .sort((a, b) => getAptTime(a) - getAptTime(b))
+    .sort((a, b) => getAppointmentTime(a) - getAppointmentTime(b))
     .slice(0, 5);
 
   const stats = [
@@ -54,7 +57,7 @@ export default function DashboardPage() {
       value: patients.length.toLocaleString(),
       change: "+12%",
       icon: Users,
-      color: "indigo",
+      color: "cyan",
     },
     {
       name: "Appointments Today",
@@ -79,33 +82,39 @@ export default function DashboardPage() {
     },
   ];
 
+  const quickStats = [
+    { label: "Patient Retention", value: "92%", pct: 92, color: "cyan" },
+    { label: "No-Show Rate", value: "4.2%", pct: 4.2, color: "amber" },
+    { label: "Visit Frequency", value: "8.7/mo", pct: 87, color: "emerald" },
+  ];
+
   const activityItems = React.useMemo(() => {
     const items: Array<{
       icon: typeof Users;
       title: string;
       desc: string;
       time: string;
-      color: "emerald" | "indigo" | "violet" | "amber" | "red";
+      color: "cyan" | "emerald" | "violet" | "amber" | "red";
     }> = [];
 
-    patients.slice(0, 3).forEach((p, i) => {
+    patients.slice(0, 3).forEach((patient, index) => {
       items.push({
         icon: Users,
         title: "New patient registered",
-        desc: `${p.firstName} ${p.lastName}`,
-        time: i === 0 ? "2 min ago" : i === 1 ? "15 min ago" : "1 hour ago",
-        color: "indigo",
+        desc: `${patient.firstName} ${patient.lastName}`,
+        time: index === 0 ? "2 min ago" : index === 1 ? "15 min ago" : "1 hour ago",
+        color: "cyan",
       });
     });
 
-    appointments.slice(0, 2).forEach((a, i) => {
-      const patient = patients.find((p) => p.id === a.patientId);
+    appointments.slice(0, 2).forEach((appointment, index) => {
+      const patient = patients.find((entry) => entry.id === appointment.patientId);
       const name = patient ? `${patient.firstName} ${patient.lastName}` : "Patient";
       items.push({
         icon: Calendar,
         title: "Appointment scheduled",
-        desc: `${name} · ${a.date} ${a.time}`,
-        time: i === 0 ? "5 min ago" : "30 min ago",
+        desc: `${name} · ${appointment.date} ${appointment.time}`,
+        time: index === 0 ? "5 min ago" : "30 min ago",
         color: "emerald",
       });
     });
@@ -124,17 +133,11 @@ export default function DashboardPage() {
         desc: "Follow-up reminders sent",
         time: "2 hours ago",
         color: "violet",
-      }
+      },
     );
 
     return items.slice(0, 6);
-  }, [patients, appointments]);
-
-  const quickStats = [
-    { label: "Patient Retention", value: "92%", pct: 92, color: "indigo" },
-    { label: "No-Show Rate", value: "4.2%", pct: 4.2, color: "amber" },
-    { label: "Visit Frequency", value: "8.7/mo", pct: 87, color: "emerald" },
-  ];
+  }, [appointments, patients]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -149,179 +152,198 @@ export default function DashboardPage() {
     show: {
       opacity: 1,
       y: 0,
-      transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+      transition: { type: "spring" as const, stiffness: 280, damping: 26 },
     },
   };
 
   const colorMap = {
-    indigo:
-      "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400",
-    emerald:
-      "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
-    violet:
-      "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400",
-    amber:
-      "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
-    red: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
+    cyan: "bg-cyan-500/12 text-cyan-700 dark:text-cyan-300",
+    emerald: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+    violet: "bg-violet-500/12 text-violet-700 dark:text-violet-300",
+    amber: "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+    red: "bg-red-500/12 text-red-700 dark:text-red-300",
   };
 
   return (
     <motion.div
-      className="flex flex-col gap-8 w-full"
+      className="flex w-full flex-col gap-8 pb-6"
       variants={containerVariants}
       initial="hidden"
       animate="show"
     >
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
-          Dashboard
-        </h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-          Welcome back. Here is your practice overview.
-        </p>
-      </div>
+      <motion.section
+        variants={itemVariants}
+        className="hero-glow surface-panel relative overflow-hidden rounded-[34px] border border-white/60 px-6 py-7 dark:border-white/6 sm:px-8"
+      >
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-primary dark:border-white/8 dark:bg-white/[0.04]">
+              <HeartPulse className="h-3.5 w-3.5" />
+              Daily Careboard
+            </div>
+            <h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-foreground sm:text-5xl">
+              Care operations look healthy, but the waiting room is your next pressure point.
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+              Today&apos;s schedule is active, patients are moving through intake, and your upcoming appointments are already clustering into the next few hours.
+            </p>
+          </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            {[
+              {
+                label: "Live queue",
+                value: `${activeEncounters} active`,
+                copy: "Patients currently in flow",
+              },
+              {
+                label: "Today",
+                value: `${appointmentsToday.length} visits`,
+                copy: "Appointments not cancelled",
+              },
+              {
+                label: "Momentum",
+                value: "Low no-show risk",
+                copy: "Schedule confidence is stable",
+              },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-[24px] border border-white/60 bg-white/72 p-4 dark:border-white/8 dark:bg-white/[0.04]"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  {item.label}
+                </p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{item.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
           <motion.div
             variants={itemVariants}
-            key={idx}
-            className={cn(
-              "relative overflow-hidden rounded-[5px] p-6 border transition-all duration-300 group",
-              "border-neutral-200/50 dark:border-neutral-800/50",
-              "bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl",
-              "shadow-sm hover:shadow-xl hover:-translate-y-0.5"
-            )}
+            key={stat.name}
+            className="surface-panel group relative overflow-hidden rounded-[28px] border border-white/60 p-6 dark:border-white/6"
           >
             <div
               className={cn(
-                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-[5px]",
-                stat.color === "indigo" && "bg-linear-to-br from-indigo-50/60 to-transparent dark:from-indigo-950/30",
-                stat.color === "emerald" && "bg-linear-to-br from-emerald-50/60 to-transparent dark:from-emerald-950/30",
-                stat.color === "violet" && "bg-linear-to-br from-violet-50/60 to-transparent dark:from-violet-950/30",
-                stat.color === "amber" && "bg-linear-to-br from-amber-50/60 to-transparent dark:from-amber-950/30"
+                "pointer-events-none absolute inset-0 rounded-[28px] opacity-0 transition-opacity group-hover:opacity-100",
+                stat.color === "cyan" && "bg-linear-to-br from-cyan-500/14 to-transparent",
+                stat.color === "emerald" && "bg-linear-to-br from-emerald-500/14 to-transparent",
+                stat.color === "violet" && "bg-linear-to-br from-violet-500/14 to-transparent",
+                stat.color === "amber" && "bg-linear-to-br from-amber-500/14 to-transparent",
               )}
             />
-            <div className="relative flex justify-between items-start">
+
+            <div className="relative flex items-start justify-between">
               <div>
-                <p className="text-neutral-500 dark:text-neutral-400 text-sm font-medium">
-                  {stat.name}
-                </p>
-                <h3 className="text-3xl font-bold mt-2 text-neutral-900 dark:text-neutral-50 tracking-tight">
+                <p className="text-sm font-medium text-muted-foreground">{stat.name}</p>
+                <h3 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">
                   {stat.value}
                 </h3>
               </div>
               <div
                 className={cn(
-                  "p-3 rounded-[5px] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3",
-                  colorMap[stat.color as keyof typeof colorMap]
+                  "rounded-[18px] p-3 transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110",
+                  colorMap[stat.color as keyof typeof colorMap],
                 )}
               >
-                <stat.icon className="w-5 h-5" strokeWidth={2} aria-hidden />
+                <stat.icon className="h-5 w-5" strokeWidth={2} />
               </div>
             </div>
+
             <div className="relative mt-4 flex items-center text-sm">
               <span
                 className={cn(
-                  "font-medium px-2 py-0.5 rounded-[5px]",
+                  "rounded-full px-2.5 py-1 font-medium",
                   stat.change.startsWith("+")
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                    : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"
+                    ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                    : "bg-red-500/12 text-red-700 dark:text-red-300",
                 )}
               >
                 {stat.change}
               </span>
-              <span className="text-neutral-500 dark:text-neutral-400 ml-2">
-                from last month
-              </span>
+              <span className="ml-2 text-muted-foreground">from last month</span>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <motion.div
             variants={itemVariants}
-            className="rounded-[5px] border border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl p-6 shadow-sm"
+            className="surface-panel rounded-[30px] border border-white/60 p-6 dark:border-white/6"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground">
                 Recent Activity
               </h2>
               <Button
                 variant="link"
-                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 p-0 h-auto font-medium text-sm"
+                className="h-auto p-0 text-sm font-medium text-primary no-underline hover:no-underline"
                 asChild
               >
-                <a href="#">View all</a>
+                <a href="#" className="inline-flex items-center gap-1">
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
               </Button>
             </div>
-            <div className="space-y-1">
-              {activityItems.map((activity, i) => (
+
+            <div className="space-y-1.5">
+              {activityItems.map((activity, index) => (
                 <div
-                  key={i}
-                  className="flex items-center gap-4 p-3 rounded-[5px] hover:bg-neutral-50/80 dark:hover:bg-neutral-800/50 transition-colors cursor-default"
+                  key={`${activity.title}-${index}`}
+                  className="flex cursor-default items-center gap-4 rounded-[22px] p-3 transition-colors hover:bg-white/65 dark:hover:bg-white/[0.04]"
                 >
-                  <div
-                    className={cn(
-                      "p-2 rounded-[5px] shrink-0",
-                      colorMap[activity.color]
-                    )}
-                  >
-                    <activity.icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  <div className={cn("shrink-0 rounded-[16px] p-2.5", colorMap[activity.color])}>
+                    <activity.icon className="h-4 w-4" strokeWidth={2} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {activity.title}
                     </p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
-                      {activity.desc}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{activity.desc}</p>
                   </div>
-                  <span className="text-xs text-neutral-400 dark:text-neutral-500 shrink-0">
-                    {activity.time}
-                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{activity.time}</span>
                 </div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Quick Stats & Upcoming */}
         <div className="space-y-6">
           <motion.div
             variants={itemVariants}
-            className="rounded-[5px] border border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl p-6 shadow-sm"
+            className="surface-panel rounded-[30px] border border-white/60 p-6 dark:border-white/6"
           >
-            <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-4">
+            <h2 className="mb-4 text-lg font-semibold tracking-[-0.03em] text-foreground">
               Quick Stats
             </h2>
             <div className="space-y-4">
-              {quickStats.map((qs, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                      {qs.label}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                      {qs.value}
+              {quickStats.map((quickStat, index) => (
+                <div key={quickStat.label}>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{quickStat.label}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {quickStat.value}
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(qs.pct, 100)}%` }}
-                      transition={{ duration: 0.8, delay: 0.2 + i * 0.1 }}
+                      animate={{ width: `${Math.min(quickStat.pct, 100)}%` }}
+                      transition={{ duration: 0.8, delay: 0.2 + index * 0.1 }}
                       className={cn(
                         "h-full rounded-full",
-                        qs.color === "indigo" && "bg-indigo-500",
-                        qs.color === "amber" && "bg-amber-500",
-                        qs.color === "emerald" && "bg-emerald-500"
+                        quickStat.color === "cyan" && "bg-cyan-500",
+                        quickStat.color === "amber" && "bg-amber-500",
+                        quickStat.color === "emerald" && "bg-emerald-500",
                       )}
                     />
                   </div>
@@ -332,49 +354,44 @@ export default function DashboardPage() {
 
           <motion.div
             variants={itemVariants}
-            className="rounded-[5px] border border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl p-6 shadow-sm"
+            className="surface-panel rounded-[30px] border border-white/60 p-6 dark:border-white/6"
           >
-            <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 tracking-tight mb-4">
+            <h2 className="mb-4 text-lg font-semibold tracking-[-0.03em] text-foreground">
               Upcoming Appointments
             </h2>
             <div className="space-y-3">
               {upcomingAppointments.length === 0 ? (
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  No upcoming appointments.
-                </p>
+                <p className="text-sm text-muted-foreground">No upcoming appointments.</p>
               ) : (
-                upcomingAppointments.map((apt) => {
-                  const patient = patients.find((p) => p.id === apt.patientId);
-                  const name = patient
-                    ? `${patient.firstName} ${patient.lastName}`
-                    : "—";
+                upcomingAppointments.map((appointment) => {
+                  const patient = patients.find((entry) => entry.id === appointment.patientId);
+                  const name = patient ? `${patient.firstName} ${patient.lastName}` : "—";
+
                   return (
                     <div
-                      key={apt.id}
-                      className="flex items-center justify-between py-2.5 px-3 rounded-[5px] hover:bg-neutral-50/80 dark:hover:bg-neutral-800/50 transition-colors"
+                      key={appointment.id}
+                      className="flex items-center justify-between rounded-[22px] px-3 py-3 transition-colors hover:bg-white/65 dark:hover:bg-white/[0.04]"
                     >
                       <div>
-                        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                          {name}
-                        </span>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {apt.date} · {apt.time} · {apt.type}
+                        <span className="text-sm font-medium text-foreground">{name}</span>
+                        <p className="text-xs text-muted-foreground">
+                          {appointment.date} · {appointment.time} · {appointment.type}
                         </p>
                       </div>
                       <span
                         className={cn(
-                          "text-xs font-medium px-2 py-1 rounded-[5px] shrink-0 capitalize",
-                          apt.status?.toLowerCase() === "confirmed" &&
-                            "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-                          (apt.status?.toLowerCase() === "scheduled" ||
-                            apt.status?.toLowerCase() === "in waiting room") &&
-                            "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400",
-                          apt.status?.toLowerCase() === "pending" &&
-                            "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-                          !apt.status && "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                          "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium capitalize",
+                          appointment.status?.toLowerCase() === "confirmed" &&
+                            "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+                          (appointment.status?.toLowerCase() === "scheduled" ||
+                            appointment.status?.toLowerCase() === "in waiting room") &&
+                            "bg-cyan-500/12 text-cyan-700 dark:text-cyan-300",
+                          appointment.status?.toLowerCase() === "pending" &&
+                            "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+                          !appointment.status && "bg-muted text-muted-foreground",
                         )}
                       >
-                        {apt.status || "—"}
+                        {appointment.status || "—"}
                       </span>
                     </div>
                   );
@@ -385,20 +402,20 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Patients */}
       <motion.div
         variants={itemVariants}
-        className="rounded-[5px] border border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl overflow-hidden shadow-sm"
+        className="surface-panel overflow-hidden rounded-[32px] border border-white/60 dark:border-white/6"
       >
-        <div className="p-6 border-b border-neutral-200/50 dark:border-neutral-800/50 flex justify-between items-center bg-white/40 dark:bg-neutral-950/40">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">
+        <div className="flex items-center justify-between border-b border-white/60 bg-white/40 p-6 dark:border-white/6 dark:bg-white/[0.02]">
+          <h2 className="text-lg font-semibold tracking-[-0.03em] text-foreground">
             Recent Patients
           </h2>
           <AddPatientDialog onSuccess={refetchPatients} />
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-neutral-50/50 dark:bg-neutral-800/30 text-neutral-500 dark:text-neutral-400 font-medium">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/32 text-muted-foreground dark:bg-white/[0.015]">
               <tr>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">ID / MRN</th>
@@ -407,23 +424,21 @@ export default function DashboardPage() {
                 <th className="px-6 py-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200/50 dark:divide-neutral-800/50 text-neutral-800 dark:text-neutral-200">
+            <tbody className="divide-y divide-white/60 text-foreground dark:divide-white/6">
               {patients.slice(0, 5).map((patient: Patient) => (
                 <tr
                   key={patient.id}
-                  className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors group"
+                  className="group transition-colors hover:bg-white/45 dark:hover:bg-white/[0.03]"
                 >
                   <td className="px-6 py-4 font-medium">
                     {patient.firstName} {patient.lastName}
                   </td>
-                  <td className="px-6 py-4 text-neutral-500 dark:text-neutral-400">
-                    {patient.mrn}
-                  </td>
+                  <td className="px-6 py-4 text-muted-foreground">{patient.mrn}</td>
                   <td className="px-6 py-4">
                     {new Date(patient.lastVisit).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-[5px] text-xs font-semibold tracking-wide border border-emerald-200/50 dark:border-emerald-800/50">
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold tracking-wide text-emerald-700 dark:text-emerald-300">
                       {patient.status}
                     </span>
                   </td>
@@ -432,15 +447,9 @@ export default function DashboardPage() {
                       <SheetTrigger asChild>
                         <Button
                           variant="link"
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:no-underline p-0 h-auto font-semibold group-hover:translate-x-1 transition-transform"
+                          className="h-auto p-0 font-semibold text-primary transition-transform hover:no-underline group-hover:translate-x-1"
                         >
-                          View Profile{" "}
-                          <span
-                            aria-hidden
-                            className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            →
-                          </span>
+                          View Profile
                         </Button>
                       </SheetTrigger>
                       <PatientProfileSheet patient={patient} />

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPasswordHash } from "@/lib/password";
 import { createPatientSession } from "@/lib/patient-auth";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(request: Request) {
   try {
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Patient auth error:", error);
+    logServerError("Patient auth error", error);
     return NextResponse.json(
       { error: "Authentication failed" },
       { status: 500 },
