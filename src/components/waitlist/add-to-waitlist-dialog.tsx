@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
 
 interface AddToWaitlistDialogProps {
   onSuccess: () => void;
@@ -51,7 +52,7 @@ export function AddToWaitlistDialog({ onSuccess }: AddToWaitlistDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Waitlist patient lookup failed", error);
     }
   };
 
@@ -83,7 +84,7 @@ export function AddToWaitlistDialog({ onSuccess }: AddToWaitlistDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to add to waitlist");
-      console.error(error);
+      logClientError("Create waitlist entry failed", error);
     } finally {
       setLoading(false);
     }

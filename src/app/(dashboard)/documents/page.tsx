@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { UploadDocumentDialog } from "@/components/documents/upload-document-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface Document {
   id: string;
@@ -52,7 +53,7 @@ export default function DocumentsPage() {
       setDocuments(data);
     } catch (error) {
       toast.error("Failed to load documents");
-      console.error(error);
+      logClientError("Document list fetch failed", error);
     } finally {
       setLoading(false);
     }

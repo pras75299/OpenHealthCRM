@@ -1,9 +1,16 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { patientUpdateSchema } from "@/lib/validations";
 import { logServerError } from "@/lib/safe-logger";
+import {
+  buildEncryptedEmergencyContactFields,
+  buildEncryptedPatientFields,
+  readEmergencyContactFields,
+  readPatientSensitiveFields,
+} from "@/lib/patient-sensitive";
 
 function mapPatientToResponse(p: {
   id: string;
@@ -26,21 +33,24 @@ function mapPatientToResponse(p: {
   mrn: string | null;
   createdAt: Date;
   updatedAt: Date;
+  sensitiveDataEncrypted?: string | null;
 }) {
+  const sensitive = readPatientSensitiveFields(p);
+
   return {
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
-    dob: p.dateOfBirth?.toISOString().split("T")[0] ?? "",
+    dob: sensitive.dateOfBirth?.toISOString().split("T")[0] ?? "",
     gender: p.gender ?? "Unknown",
     email: p.email ?? "",
     phone: p.phone ?? "",
-    phoneSecondary: p.phoneSecondary ?? "",
-    address: p.address ?? "",
-    city: p.city ?? "",
-    state: p.state ?? "",
-    zip: p.zip ?? "",
-    country: p.country ?? "",
+    phoneSecondary: sensitive.phoneSecondary ?? "",
+    address: sensitive.address ?? "",
+    city: sensitive.city ?? "",
+    state: sensitive.state ?? "",
+    zip: sensitive.zip ?? "",
+    country: sensitive.country ?? "",
     bloodType: p.bloodType ?? "Unknown",
     allergies: p.allergies ?? "None",
     primaryCareProvider: p.primaryCareProvider ?? "Unassigned",
@@ -72,11 +82,7 @@ export async function GET(
     return NextResponse.json({
       ...mapPatientToResponse(patient),
       emergencyContact: patient.emergencyContact
-        ? {
-            name: patient.emergencyContact.name,
-            phone: patient.emergencyContact.phone,
-            relationship: patient.emergencyContact.relationship,
-          }
+        ? readEmergencyContactFields(patient.emergencyContact)
         : null,
     });
   } catch (error) {
@@ -128,30 +134,51 @@ export async function PATCH(
     }
 
     const data = parsed.data;
+    const existingSensitive = readPatientSensitiveFields(existing);
+    const nextSensitive = buildEncryptedPatientFields({
+      dateOfBirth:
+        data.dateOfBirth !== undefined
+          ? data.dateOfBirth
+          : existingSensitive.dateOfBirth?.toISOString().split("T")[0] ?? null,
+      phoneSecondary:
+        data.phoneSecondary !== undefined
+          ? data.phoneSecondary
+          : existingSensitive.phoneSecondary,
+      address: data.address !== undefined ? data.address : existingSensitive.address,
+      city: data.city !== undefined ? data.city : existingSensitive.city,
+      state: data.state !== undefined ? data.state : existingSensitive.state,
+      zip: data.zip !== undefined ? data.zip : existingSensitive.zip,
+      country:
+        data.country !== undefined ? data.country : existingSensitive.country,
+      familyHistory:
+        data.familyHistory !== undefined
+          ? data.familyHistory
+          : existingSensitive.familyHistory,
+    });
 
-    const updated = await prisma.$transaction(async (tx: any) => {
+    const updated = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const patient = await tx.patient.update({
         where: { id },
         data: {
           firstName: data.firstName,
           lastName: data.lastName,
-          dateOfBirth: data.dateOfBirth
-            ? new Date(data.dateOfBirth)
-            : existing.dateOfBirth,
+          dateOfBirth: nextSensitive.dateOfBirth,
           gender: data.gender ?? existing.gender,
           email: data.email ?? existing.email,
           phone: data.phone ?? existing.phone,
-          phoneSecondary: data.phoneSecondary ?? existing.phoneSecondary,
-          address: data.address ?? existing.address,
-          city: data.city ?? existing.city,
-          state: data.state ?? existing.state,
-          zip: data.zip ?? existing.zip,
-          country: data.country ?? existing.country,
+          phoneSecondary: nextSensitive.phoneSecondary,
+          address: nextSensitive.address,
+          city: nextSensitive.city,
+          state: nextSensitive.state,
+          zip: nextSensitive.zip,
+          country: nextSensitive.country,
           bloodType: data.bloodType ?? existing.bloodType,
           allergies: data.allergies ?? existing.allergies,
           primaryCareProvider:
             data.primaryCareProvider ?? existing.primaryCareProvider,
-          familyHistory: data.familyHistory ?? existing.familyHistory,
+          familyHistory: nextSensitive.familyHistory,
+          sensitiveDataEncrypted: nextSensitive.sensitiveDataEncrypted,
           status: data.status ? (data.status as string) : existing.status,
         },
       });
@@ -161,24 +188,35 @@ export async function PATCH(
         data.emergencyContactPhone !== undefined
       ) {
         if (existing.emergencyContact) {
+          const existingContact = readEmergencyContactFields(existing.emergencyContact);
+          const encryptedContact = buildEncryptedEmergencyContactFields({
+            name:
+              data.emergencyContactName !== undefined
+                ? data.emergencyContactName
+                : existingContact.name,
+            phone:
+              data.emergencyContactPhone !== undefined
+                ? data.emergencyContactPhone
+                : existingContact.phone,
+            relationship:
+              data.emergencyContactRelationship !== undefined
+                ? data.emergencyContactRelationship
+                : existingContact.relationship,
+          });
           await tx.emergencyContact.update({
             where: { patientId: id },
-            data: {
-              name: data.emergencyContactName ?? existing.emergencyContact.name,
-              phone:
-                data.emergencyContactPhone ?? existing.emergencyContact.phone,
-              relationship:
-                data.emergencyContactRelationship ??
-                existing.emergencyContact.relationship,
-            },
+            data: encryptedContact,
           });
         } else if (data.emergencyContactName || data.emergencyContactPhone) {
+          const encryptedContact = buildEncryptedEmergencyContactFields({
+            name: data.emergencyContactName ?? "Unknown",
+            phone: data.emergencyContactPhone ?? "",
+            relationship: data.emergencyContactRelationship ?? null,
+          });
           await tx.emergencyContact.create({
             data: {
               patientId: id,
-              name: data.emergencyContactName ?? "Unknown",
-              phone: data.emergencyContactPhone ?? "",
-              relationship: data.emergencyContactRelationship ?? null,
+              ...encryptedContact,
             },
           });
         }
@@ -197,7 +235,8 @@ export async function PATCH(
       });
 
       return patient;
-    });
+      },
+    );
 
     const withContact = await prisma.patient.findUnique({
       where: { id: updated.id },
@@ -209,11 +248,7 @@ export async function PATCH(
         ? {
             ...mapPatientToResponse(withContact),
             emergencyContact: withContact.emergencyContact
-              ? {
-                  name: withContact.emergencyContact.name,
-                  phone: withContact.emergencyContact.phone,
-                  relationship: withContact.emergencyContact.relationship,
-                }
+              ? readEmergencyContactFields(withContact.emergencyContact)
               : null,
           }
         : mapPatientToResponse(updated),

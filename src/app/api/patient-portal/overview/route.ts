@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPatientSessionFromRequest } from "@/lib/patient-auth";
 import { prisma } from "@/lib/prisma";
 import { logServerError } from "@/lib/safe-logger";
+import { getLatestVitalSnapshot } from "@/lib/vitals";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
 
     const patientId = session.patient.id;
 
-    const [appointments, labResults] = await Promise.all([
+    const [appointments, labResults, latestVital] = await Promise.all([
       prisma.appointment.findMany({
         where: { patientId },
         include: {
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
         orderBy: { createdAt: "desc" },
         take: 3,
       }),
+      getLatestVitalSnapshot(patientId),
     ]);
 
     return NextResponse.json({
@@ -64,6 +66,7 @@ export async function GET(request: Request) {
         unit: lab.unit,
         status: lab.status,
       })),
+      latestVital,
     });
   } catch (error) {
     logServerError("Patient portal overview error", error);

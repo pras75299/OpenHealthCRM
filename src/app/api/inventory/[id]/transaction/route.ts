@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
@@ -16,6 +18,7 @@ export async function POST(
       { action: "billing:write", resource: "billing" },
     ]);
     if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { type, quantity, reason } = body;
@@ -45,20 +48,37 @@ export async function POST(
     const delta = type === "restock" ? qty : type === "usage" ? -qty : qty;
     const newQuantity = Math.max(0, item.quantity + delta);
 
-    await prisma.$transaction([
-      prisma.inventoryTransaction.create({
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const transaction = await tx.inventoryTransaction.create({
         data: {
           itemId,
           type,
           quantity: type === "usage" ? -qty : qty,
           reason: reason || null,
         },
-      }),
-      prisma.inventoryItem.update({
+      });
+
+      await tx.inventoryItem.update({
         where: { id: itemId },
         data: { quantity: newQuantity },
-      }),
-    ]);
+      });
+
+      await createAuditLog({
+        organizationId: orgId,
+        userId,
+        action: "UPDATE",
+        entityType: "InventoryItem",
+        entityId: itemId,
+        beforeState: JSON.stringify({ quantity: item.quantity }),
+        afterState: JSON.stringify({
+          quantity: newQuantity,
+          transactionId: transaction.id,
+          transactionType: type,
+          delta,
+        }),
+        db: tx,
+      });
+    });
 
     const updated = await prisma.inventoryItem.findUnique({
       where: { id: itemId },

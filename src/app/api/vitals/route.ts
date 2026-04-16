@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
@@ -9,6 +10,11 @@ export async function GET(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:read", resource: "patients" },
+      { action: "encounters:read", resource: "encounters" },
+    ]);
+    if (authz.response) return authz.response;
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
@@ -55,6 +61,7 @@ export async function POST(request: Request) {
       { action: "patients:write", resource: "patients" },
     ]);
     if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, encounterId, ...vitalData } = body;
@@ -101,6 +108,15 @@ export async function POST(request: Request) {
         spO2: data.spO2 ?? null,
         temperature: data.temperature ?? null,
       },
+    });
+
+    await createAuditLog({
+      organizationId: orgId,
+      userId,
+      action: "CREATE",
+      entityType: "Vital",
+      entityId: vital.id,
+      afterState: JSON.stringify(vital),
     });
 
     return NextResponse.json(vital, { status: 201 });

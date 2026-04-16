@@ -1,6 +1,8 @@
+import type { PrismaClient, Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 
 export type AuditAction = "CREATE" | "UPDATE" | "DELETE";
+type AuditDbClient = PrismaClient | Prisma.TransactionClient;
 
 export interface CreateAuditParams {
   organizationId: string;
@@ -12,13 +14,16 @@ export interface CreateAuditParams {
   afterState?: string;
   ipAddress?: string;
   userAgent?: string;
+  db?: AuditDbClient;
 }
 
 /**
  * Append-only audit log. Every Create, Update, Delete must call this.
  */
 export async function createAuditLog(params: CreateAuditParams) {
-  return prisma.auditLog.create({
+  const db = params.db ?? prisma;
+
+  return db.auditLog.create({
     data: {
       organizationId: params.organizationId,
       userId: params.userId,

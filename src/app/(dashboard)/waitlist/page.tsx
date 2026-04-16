@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { AddToWaitlistDialog } from "@/components/waitlist/add-to-waitlist-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface WaitlistEntry {
   id: string;
@@ -52,7 +53,7 @@ export default function WaitlistPage() {
       setEntries(data);
     } catch (error) {
       toast.error("Failed to load waitlist");
-      console.error(error);
+      logClientError("Waitlist fetch failed", error);
     } finally {
       setLoading(false);
     }

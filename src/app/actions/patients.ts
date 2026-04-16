@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { logServerError } from "@/lib/safe-logger";
 import { revalidatePath } from "next/cache";
 
 // Fetches all patients for the default organization (since auth is not fully hooked up yet)
@@ -14,7 +15,7 @@ export async function getPatients() {
         });
         return { data: patients, error: null };
     } catch (error) {
-        console.error("Failed to fetch patients:", error);
+        logServerError("Patient server action fetch failed", error);
         return { data: null, error: "Failed to fetch patients." };
     }
 }
@@ -45,7 +46,7 @@ export async function createPatient(formData: FormData) {
         revalidatePath("/patients");
         return { data: patient, error: null };
     } catch (error) {
-        console.error("Failed to create patient:", error);
+        logServerError("Patient server action create failed", error);
         return { data: null, error: "Failed to create patient." };
     }
 }

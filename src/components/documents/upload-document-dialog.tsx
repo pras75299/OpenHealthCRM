@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
 
 interface UploadDocumentDialogProps {
   onSuccess: () => void;
@@ -51,7 +52,7 @@ export function UploadDocumentDialog({ onSuccess }: UploadDocumentDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Upload document patient lookup failed", error);
     }
   };
 
@@ -114,7 +115,7 @@ export function UploadDocumentDialog({ onSuccess }: UploadDocumentDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to upload document");
-      console.error(error);
+      logClientError("Upload document submission failed", error);
     } finally {
       setLoading(false);
     }

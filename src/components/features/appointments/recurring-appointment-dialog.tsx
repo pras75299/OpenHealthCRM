@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { logClientError } from "@/lib/client-logger";
 
 interface RecurringAppointmentDialogProps {
   appointmentId: string;
@@ -103,7 +104,7 @@ export function RecurringAppointmentDialog({
       onSuccess();
     } catch (error) {
       toast.error("Failed to set recurrence");
-      console.error(error);
+      logClientError("Recurring appointment update failed", error);
     } finally {
       setLoading(false);
     }

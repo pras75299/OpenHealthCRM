@@ -117,6 +117,7 @@ model Patient {
   allergies           String?             // JSON array or comma-separated
   primaryCareProvider String?
   passwordHash        String?
+  sensitiveDataEncrypted String?
   emergencyContact    EmergencyContact?
   familyHistory       String?             // JSON for genetic/family history
   status              String              @default("Active") // Active, Inactive, Archived
@@ -158,6 +159,7 @@ model EmergencyContact {
   relationship String?
   phone     String
   email     String?
+  contactDataEncrypted String?
 }
 
 model Consent {

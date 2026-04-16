@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { logClientError } from "@/lib/client-logger"
 
 export type Patient = {
   id: string
@@ -66,7 +67,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setAppointments(apptsData);
       }
     } catch (error) {
-      console.error("Failed to fetch initial data", error);
+      logClientError("Initial medical data fetch failed", error);
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setPatients((prev) => [newPatient, ...prev])
       }
     } catch (error) {
-      console.error("Failed to add patient", error);
+      logClientError("Create patient from medical context failed", error);
     }
   }
 
@@ -105,7 +106,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setAppointments((prev) => [...prev, newApt])
       }
     } catch (error) {
-      console.error("Failed to add appointment", error);
+      logClientError("Create appointment from medical context failed", error);
     }
   }
 
@@ -121,7 +122,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
          setAppointments((prev) => prev.map(apt => apt.id === id ? { ...apt, ...updatedApt } : apt))
        }
     } catch (error) {
-       console.error("Failed to update appointment", error);
+       logClientError("Update appointment from medical context failed", error);
     }
   }
 
@@ -133,7 +134,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setPatients(data);
       }
     } catch (error) {
-      console.error("Failed to refetch patients", error);
+      logClientError("Patient refetch failed", error);
     }
   }, []);
 

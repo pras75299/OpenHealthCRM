@@ -22,7 +22,7 @@ import { useMedical, Patient } from "@/context/MedicalContext"
 import { PatientProfileSheet } from "@/components/patients/patient-profile-sheet"
 import { AddPatientDialog } from "@/components/patients/add-patient-dialog"
 
-export default function PatientsPage() {
+function PatientsPageContent() {
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = React.useState("")
   const { patients, refetchPatients } = useMedical()
@@ -141,5 +141,13 @@ export default function PatientsPage() {
          </div>
       </div>
     </div>
+  )
+}
+
+export default function PatientsPage() {
+  return (
+    <React.Suspense fallback={<div className="flex-1" />}>
+      <PatientsPageContent />
+    </React.Suspense>
   )
 }

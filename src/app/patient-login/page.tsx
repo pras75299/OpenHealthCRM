@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getClientErrorMessage, logClientError } from "@/lib/client-logger";
 
 export default function PatientLoginPage() {
   const [loading, setLoading] = React.useState(false);
@@ -49,9 +50,9 @@ export default function PatientLoginPage() {
 
       toast.success("Login successful!");
       router.push("/patient-portal");
-    } catch (error: any) {
-      toast.error(error.message || "Login failed");
-      console.error(error);
+    } catch (error) {
+      toast.error(getClientErrorMessage(error, "Login failed"));
+      logClientError("Patient login failed", error);
     } finally {
       setLoading(false);
     }

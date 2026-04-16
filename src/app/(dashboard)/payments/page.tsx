@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { PaymentDialog } from "@/components/billing/payment-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface Payment {
   id: string;
@@ -60,7 +61,7 @@ export default function PaymentsPage() {
       setPayments(data);
     } catch (error) {
       toast.error("Failed to load payments");
-      console.error(error);
+      logClientError("Payments fetch failed", error);
     } finally {
       setLoading(false);
     }

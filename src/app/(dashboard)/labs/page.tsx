@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { AddLabResultDialog } from "@/components/labs/add-lab-result-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface LabResult {
   id: string;
@@ -54,7 +55,7 @@ export default function LabResultsPage() {
       setResults(data);
     } catch (error) {
       toast.error("Failed to load lab results");
-      console.error(error);
+      logClientError("Lab results fetch failed", error);
     } finally {
       setLoading(false);
     }

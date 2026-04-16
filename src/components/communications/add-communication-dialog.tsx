@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/client-logger";
 
 interface AddCommunicationDialogProps {
   onSuccess?: () => void;
@@ -52,7 +53,7 @@ export function AddCommunicationDialog({
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Communication patient lookup failed", error);
     } finally {
       setPatientLoading(false);
     }
@@ -94,7 +95,7 @@ export function AddCommunicationDialog({
       onSuccess?.();
     } catch (error) {
       toast.error("Failed to send communication");
-      console.error(error);
+      logClientError("Create communication failed", error);
     } finally {
       setLoading(false);
     }

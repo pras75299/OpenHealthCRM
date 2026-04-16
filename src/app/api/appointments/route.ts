@@ -1,4 +1,6 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
@@ -19,7 +21,16 @@ export async function GET() {
       orderBy: { startTime: "asc" },
     });
 
-    const mapped = appointments.map((a: any) => {
+    const mapped = appointments.map(
+      (
+        a: Prisma.AppointmentGetPayload<{
+          include: {
+            provider: true;
+            patient: { select: { firstName: true; lastName: true } };
+            room: true;
+          };
+        }>,
+      ) => {
       const timeString = a.startTime.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -64,6 +75,7 @@ export async function POST(request: Request) {
       { action: "appointments:write", resource: "appointments" },
     ]);
     if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const {
@@ -166,6 +178,23 @@ export async function POST(request: Request) {
       include: { provider: true },
     });
 
+    await createAuditLog({
+      organizationId: orgId,
+      userId,
+      action: "CREATE",
+      entityType: "Appointment",
+      entityId: newAppointment.id,
+      afterState: JSON.stringify({
+        patientId: newAppointment.patientId,
+        providerId: newAppointment.providerId,
+        roomId: newAppointment.roomId,
+        startTime: newAppointment.startTime,
+        endTime: newAppointment.endTime,
+        status: newAppointment.status,
+        appointmentType: newAppointment.appointmentType,
+      }),
+    });
+
     return NextResponse.json(
       {
         id: newAppointment.id,
@@ -200,6 +229,7 @@ export async function PATCH(request: Request) {
       { action: "appointments:write", resource: "appointments" },
     ]);
     if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { id, ...updates } = body;
@@ -238,6 +268,24 @@ export async function PATCH(request: Request) {
       where: { id },
       data: updateData,
       include: { provider: true },
+    });
+
+    await createAuditLog({
+      organizationId: orgId,
+      userId,
+      action: "UPDATE",
+      entityType: "Appointment",
+      entityId: updated.id,
+      beforeState: JSON.stringify({
+        startTime: existing.startTime,
+        endTime: existing.endTime,
+        status: existing.status,
+      }),
+      afterState: JSON.stringify({
+        startTime: updated.startTime,
+        endTime: updated.endTime,
+        status: updated.status,
+      }),
     });
 
     return NextResponse.json({

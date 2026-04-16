@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { AddConsentDialog } from "@/components/consents/add-consent-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface Consent {
   id: string;
@@ -50,7 +51,7 @@ export default function ConsentsPage() {
       setConsents(data);
     } catch (error) {
       toast.error("Failed to load consents");
-      console.error(error);
+      logClientError("Consent list fetch failed", error);
     } finally {
       setLoading(false);
     }

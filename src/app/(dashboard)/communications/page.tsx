@@ -22,6 +22,7 @@ import {
 import { MessageCircle, Mail, MessageSquare, Phone } from "lucide-react";
 import { AddCommunicationDialog } from "@/components/communications/add-communication-dialog";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/client-logger";
 
 interface Communication {
   id: string;
@@ -71,7 +72,7 @@ export default function CommunicationsPage() {
       setCommunications(data);
     } catch (error) {
       toast.error("Failed to fetch communications");
-      console.error(error);
+      logClientError("Communications list fetch failed", error);
     } finally {
       setLoading(false);
     }

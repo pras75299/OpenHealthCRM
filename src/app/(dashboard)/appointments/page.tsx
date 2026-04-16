@@ -151,7 +151,7 @@ function EditAppointmentDialog({
   )
 }
 
-export default function AppointmentsPage() {
+function AppointmentsPageContent() {
   const searchParams = useSearchParams()
   const { appointments, patients, addAppointment, updateAppointment } = useMedical()
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -390,5 +390,13 @@ export default function AppointmentsPage() {
         )
       })()}
     </div>
+  )
+}
+
+export default function AppointmentsPage() {
+  return (
+    <React.Suspense fallback={<div className="flex-1" />}>
+      <AppointmentsPageContent />
+    </React.Suspense>
   )
 }

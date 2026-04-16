@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
 import { requireAnyPermission } from "@/lib/authorization";
@@ -55,6 +56,15 @@ export async function POST(
         plan: data.plan ?? null,
         text: data.text ?? null,
       },
+    });
+
+    await createAuditLog({
+      organizationId: orgId,
+      userId,
+      action: "CREATE",
+      entityType: "EncounterNote",
+      entityId: note.id,
+      afterState: JSON.stringify(note),
     });
 
     return NextResponse.json(note, { status: 201 });

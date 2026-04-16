@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
 
 interface AddLabResultDialogProps {
   onSuccess: () => void;
@@ -56,7 +57,7 @@ export function AddLabResultDialog({ onSuccess }: AddLabResultDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Lab result patient lookup failed", error);
     }
   };
 
@@ -102,7 +103,7 @@ export function AddLabResultDialog({ onSuccess }: AddLabResultDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to add lab result");
-      console.error(error);
+      logClientError("Create lab result failed", error);
     } finally {
       setLoading(false);
     }

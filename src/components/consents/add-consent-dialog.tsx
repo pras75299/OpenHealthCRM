@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
 
 interface AddConsentDialogProps {
   onSuccess: () => void;
@@ -53,7 +54,7 @@ export function AddConsentDialog({ onSuccess }: AddConsentDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Consent patient lookup failed", error);
     }
   };
 
@@ -105,7 +106,7 @@ export function AddConsentDialog({ onSuccess }: AddConsentDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to record consent");
-      console.error(error);
+      logClientError("Create consent failed", error);
     } finally {
       setLoading(false);
     }

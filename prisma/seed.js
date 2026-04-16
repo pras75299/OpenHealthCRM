@@ -192,9 +192,6 @@ async function clearOperationalData({ orgId, patientIds, appointmentIds, encount
   await prisma.campaign.deleteMany({
     where: { organizationId: orgId },
   });
-  await prisma.auditLog.deleteMany({
-    where: { organizationId: orgId },
-  });
 }
 
 async function main() {

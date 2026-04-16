@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getClientErrorMessage, logClientError } from "@/lib/client-logger";
 
 interface PaymentDialogProps {
   invoiceId?: string;
@@ -54,7 +55,7 @@ export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
       setInvoices(unpaidInvoices);
     } catch (error) {
       toast.error("Failed to load invoices");
-      console.error(error);
+      logClientError("Payment dialog invoice fetch failed", error);
     }
   };
 
@@ -108,9 +109,9 @@ export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
       });
       setOpen(false);
       onSuccess?.();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to process payment");
-      console.error(error);
+    } catch (error) {
+      toast.error(getClientErrorMessage(error, "Failed to process payment"));
+      logClientError("Payment dialog submission failed", error);
     } finally {
       setLoading(false);
     }
