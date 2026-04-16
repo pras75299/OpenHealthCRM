@@ -1122,7 +1122,10 @@ main()
     await pool.end();
   })
   .catch(async (error) => {
-    console.error(error);
+    console.error(
+      "Seed failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
     await prisma.$disconnect();
     await pool.end();
     process.exit(1);

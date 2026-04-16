@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 import {
   sendSMS,
   sendEmail,
@@ -68,6 +69,17 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        await createAuditLog({
+          organizationId: comm.organizationId,
+          action: "UPDATE",
+          entityType: "Communication",
+          entityId: comm.id,
+          actorType: "system",
+          actorIdentifier: "cron:scheduled-communications",
+          beforeState: JSON.stringify({ status: comm.status }),
+          afterState: JSON.stringify({ status: "sent", sentAt: now }),
+        });
+
         sent++;
       } catch (error) {
         logServerError("Failed to send scheduled communication", error, {
@@ -78,6 +90,17 @@ export async function POST(request: NextRequest) {
         await prisma.communication.update({
           where: { id: comm.id },
           data: { status: "failed" },
+        });
+
+        await createAuditLog({
+          organizationId: comm.organizationId,
+          action: "UPDATE",
+          entityType: "Communication",
+          entityId: comm.id,
+          actorType: "system",
+          actorIdentifier: "cron:scheduled-communications",
+          beforeState: JSON.stringify({ status: comm.status }),
+          afterState: JSON.stringify({ status: "failed" }),
         });
 
         failed++;

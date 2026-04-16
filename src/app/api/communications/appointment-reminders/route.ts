@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 import {
   sendSMS,
   sendEmail,
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Log the reminder communication
-        await prisma.communication.create({
+        const communication = await prisma.communication.create({
           data: {
             organizationId: patient.organizationId,
             patientId: patient.id,
@@ -115,6 +116,22 @@ export async function POST(request: NextRequest) {
             content: `[APPOINTMENT_ID: ${appointment.id}]\n\n${messages.sms}`,
             sentAt: now,
           },
+        });
+
+        await createAuditLog({
+          organizationId: patient.organizationId,
+          action: "CREATE",
+          entityType: "Communication",
+          entityId: communication.id,
+          actorType: "system",
+          actorIdentifier: "cron:appointment-reminders",
+          afterState: JSON.stringify({
+            patientId: patient.id,
+            appointmentId: appointment.id,
+            channel: communication.channel,
+            type: communication.type,
+            status: communication.status,
+          }),
         });
       }
     }

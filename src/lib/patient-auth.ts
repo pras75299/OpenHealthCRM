@@ -18,7 +18,7 @@ export async function createPatientSession(params: {
   const rawToken = createPatientSessionToken();
   const expiresAt = new Date(Date.now() + (params.expiresInMs ?? 24 * 60 * 60 * 1000));
 
-  await prisma.patientSession.create({
+  const session = await prisma.patientSession.create({
     data: {
       patientId: params.patientId,
       tokenHash: hashSessionToken(rawToken),
@@ -28,7 +28,7 @@ export async function createPatientSession(params: {
     },
   });
 
-  return { rawToken, expiresAt };
+  return { sessionId: session.id, rawToken, expiresAt };
 }
 
 export async function getPatientSessionFromRequest(request: Request) {

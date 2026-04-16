@@ -6,7 +6,9 @@ type AuditDbClient = PrismaClient | Prisma.TransactionClient;
 
 export interface CreateAuditParams {
   organizationId: string;
-  userId: string;
+  userId?: string | null;
+  actorType?: "user" | "patient" | "system" | "webhook";
+  actorIdentifier?: string | null;
   action: AuditAction;
   entityType: string;
   entityId: string;
@@ -26,7 +28,9 @@ export async function createAuditLog(params: CreateAuditParams) {
   return db.auditLog.create({
     data: {
       organizationId: params.organizationId,
-      userId: params.userId,
+      userId: params.userId ?? null,
+      actorType: params.actorType ?? (params.userId ? "user" : "system"),
+      actorIdentifier: params.actorIdentifier ?? null,
       action: params.action,
       entityType: params.entityType,
       entityId: params.entityId,

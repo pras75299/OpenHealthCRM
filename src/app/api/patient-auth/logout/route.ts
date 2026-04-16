@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 import { revokePatientSessionFromRequest } from "@/lib/patient-auth";
 import { logServerError } from "@/lib/safe-logger";
 
@@ -18,6 +19,20 @@ export async function POST(request: Request) {
       path: "/",
       expires: new Date(0),
     });
+
+    await createAuditLog({
+      organizationId: session.patient.organizationId,
+      action: "DELETE",
+      entityType: "PatientSession",
+      entityId: session.id,
+      actorType: "patient",
+      actorIdentifier: session.patientId,
+      beforeState: JSON.stringify({ status: "active" }),
+      afterState: JSON.stringify({ status: "revoked" }),
+      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
+    });
+
     return response;
   } catch (error) {
     logServerError("Patient logout error", error);

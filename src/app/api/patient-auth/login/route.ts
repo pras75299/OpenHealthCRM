@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPasswordHash } from "@/lib/password";
 import { createPatientSession } from "@/lib/patient-auth";
+import { createAuditLog } from "@/lib/audit";
 import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(request: Request) {
@@ -38,10 +39,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const { rawToken, expiresAt } = await createPatientSession({
+    const { sessionId, rawToken, expiresAt } = await createPatientSession({
       patientId: patient.id,
-      ipAddress: request.headers.get("x-forwarded-for"),
-      userAgent: request.headers.get("user-agent"),
+      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
     });
 
     const response = NextResponse.json(
@@ -65,6 +66,18 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       path: "/",
       expires: expiresAt,
+    });
+
+    await createAuditLog({
+      organizationId: patient.organizationId,
+      action: "CREATE",
+      entityType: "PatientSession",
+      entityId: sessionId,
+      actorType: "patient",
+      actorIdentifier: patient.id,
+      afterState: JSON.stringify({ status: "created" }),
+      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
     });
 
     return response;

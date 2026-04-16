@@ -509,8 +509,10 @@ model AuditLog {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  actorType      String       @default("user") // user, patient, system, webhook
+  actorIdentifier String?
   action         String       // CREATE, UPDATE, DELETE
   entityType     String
   entityId       String

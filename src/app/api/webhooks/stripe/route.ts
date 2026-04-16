@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import stripe from "@/lib/stripe";
 import { logServerError } from "@/lib/safe-logger";
@@ -64,6 +65,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
 
   const payment = await prisma.payment.findFirst({
     where: { stripePaymentId },
+    include: { invoice: true },
   });
 
   if (!payment) {
@@ -83,6 +85,28 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     data: { status: "paid" },
   });
 
+  await createAuditLog({
+    organizationId: payment.invoice.organizationId,
+    action: "UPDATE",
+    entityType: "Payment",
+    entityId: payment.id,
+    actorType: "webhook",
+    actorIdentifier: "payment_intent.succeeded",
+    beforeState: JSON.stringify({ status: payment.status }),
+    afterState: JSON.stringify({ status: "completed", stripePaymentId }),
+  });
+
+  await createAuditLog({
+    organizationId: payment.invoice.organizationId,
+    action: "UPDATE",
+    entityType: "Invoice",
+    entityId: payment.invoiceId,
+    actorType: "webhook",
+    actorIdentifier: "payment_intent.succeeded",
+    beforeState: JSON.stringify({ status: payment.invoice.status }),
+    afterState: JSON.stringify({ status: "paid" }),
+  });
+
   console.log(
     `Payment ${payment.id} completed for invoice ${payment.invoiceId}`,
   );
@@ -93,6 +117,7 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent) {
 
   const payment = await prisma.payment.findFirst({
     where: { stripePaymentId },
+    include: { invoice: true },
   });
 
   if (!payment) {
@@ -106,6 +131,17 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent) {
     data: { status: "failed" },
   });
 
+  await createAuditLog({
+    organizationId: payment.invoice.organizationId,
+    action: "UPDATE",
+    entityType: "Payment",
+    entityId: payment.id,
+    actorType: "webhook",
+    actorIdentifier: "payment_intent.payment_failed",
+    beforeState: JSON.stringify({ status: payment.status }),
+    afterState: JSON.stringify({ status: "failed", stripePaymentId }),
+  });
+
   console.log(`Payment ${payment.id} failed`);
 }
 
@@ -117,6 +153,7 @@ async function handleRefund(charge: Stripe.Charge) {
 
   const payment = await prisma.payment.findFirst({
     where: { stripePaymentId: charge.payment_intent as string },
+    include: { invoice: true },
   });
 
   if (!payment) {
@@ -130,6 +167,17 @@ async function handleRefund(charge: Stripe.Charge) {
   await prisma.payment.update({
     where: { id: payment.id },
     data: { status: "refunded" },
+  });
+
+  await createAuditLog({
+    organizationId: payment.invoice.organizationId,
+    action: "UPDATE",
+    entityType: "Payment",
+    entityId: payment.id,
+    actorType: "webhook",
+    actorIdentifier: "charge.refunded",
+    beforeState: JSON.stringify({ status: payment.status }),
+    afterState: JSON.stringify({ status: "refunded" }),
   });
 
   console.log(`Payment ${payment.id} refunded`);
