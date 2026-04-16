@@ -1,4 +1,8 @@
-import { decryptJson, encryptJson, isEncryptionEnabled } from "@/lib/crypto";
+import {
+  decryptJsonStrict,
+  encryptJsonStrict,
+  isEncryptionEnabled,
+} from "@/lib/crypto";
 
 export class SensitiveDataUnavailableError extends Error {
   constructor(field: string) {
@@ -46,13 +50,15 @@ type EmergencyContactRecord = {
 };
 
 function decryptPatientFields(record: Pick<PatientRecord, "sensitiveDataEncrypted">) {
-  return decryptJson<SensitivePatientFields>(record.sensitiveDataEncrypted);
+  return decryptJsonStrict<SensitivePatientFields>(record.sensitiveDataEncrypted);
 }
 
 function decryptEmergencyContactFields(
   record: Pick<EmergencyContactRecord, "contactDataEncrypted">,
 ) {
-  return decryptJson<SensitiveEmergencyContactFields>(record.contactDataEncrypted);
+  return decryptJsonStrict<SensitiveEmergencyContactFields>(
+    record.contactDataEncrypted,
+  );
 }
 
 export function buildEncryptedPatientFields(fields: SensitivePatientFields) {
@@ -79,7 +85,7 @@ export function buildEncryptedPatientFields(fields: SensitivePatientFields) {
     zip: null,
     country: null,
     familyHistory: null,
-    sensitiveDataEncrypted: encryptJson(fields),
+    sensitiveDataEncrypted: encryptJsonStrict(fields),
   };
 }
 
@@ -101,16 +107,12 @@ export function buildEncryptedEmergencyContactFields(
     phone: "",
     relationship: null,
     email: null,
-    contactDataEncrypted: encryptJson(fields),
+    contactDataEncrypted: encryptJsonStrict(fields),
   };
 }
 
 export function readPatientSensitiveFields(record: PatientRecord) {
   const encrypted = decryptPatientFields(record);
-
-  if (record.sensitiveDataEncrypted && !encrypted) {
-    throw new SensitiveDataUnavailableError("patient");
-  }
 
   return {
     dateOfBirth: encrypted?.dateOfBirth
@@ -128,10 +130,6 @@ export function readPatientSensitiveFields(record: PatientRecord) {
 
 export function readEmergencyContactFields(record: EmergencyContactRecord) {
   const encrypted = decryptEmergencyContactFields(record);
-
-  if (record.contactDataEncrypted && !encrypted) {
-    throw new SensitiveDataUnavailableError("emergency contact");
-  }
 
   return {
     name: encrypted?.name ?? record.name,

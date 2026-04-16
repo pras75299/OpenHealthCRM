@@ -15,7 +15,7 @@ export async function POST(
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const authz = await requireAnyPermission(orgId, [
-      { action: "billing:write", resource: "billing" },
+      { action: "inventory:write", resource: "inventory" },
     ]);
     if (authz.response) return authz.response;
     const { userId } = authz;

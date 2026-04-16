@@ -218,6 +218,8 @@ async function main() {
     { action: "appointments:write", resource: "appointments" },
     { action: "encounters:read", resource: "encounters" },
     { action: "encounters:write", resource: "encounters" },
+    { action: "inventory:read", resource: "inventory" },
+    { action: "inventory:write", resource: "inventory" },
     { action: "billing:read", resource: "billing" },
     { action: "billing:write", resource: "billing" },
   ];

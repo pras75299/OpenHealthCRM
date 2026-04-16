@@ -11,8 +11,8 @@ type LoginFormProps = {
 
 export function LoginForm({ callbackUrl }: LoginFormProps) {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@acmeclinic.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
