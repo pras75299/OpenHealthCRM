@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   sendSMS,
@@ -6,6 +7,13 @@ import {
   renderAppointmentReminder,
 } from "@/lib/communications";
 import { logServerError } from "@/lib/safe-logger";
+
+type ReminderAppointment = Prisma.AppointmentGetPayload<{
+  include: {
+    patient: true;
+    provider: true;
+  };
+}>;
 
 /**
  * CRON endpoint: Sends appointment reminders
@@ -39,9 +47,9 @@ export async function POST(request: NextRequest) {
       take: 100,
     });
 
-    for (const appointment of upcomingAppointments) {
-      const patient = appointment.patient as any;
-      const provider = appointment.provider as any;
+    for (const appointment of upcomingAppointments as ReminderAppointment[]) {
+      const patient = appointment.patient;
+      const provider = appointment.provider;
 
       // Check if reminder already sent (you might want to add a field to track this)
       // For now, we'll send reminders if communication doesn't exist

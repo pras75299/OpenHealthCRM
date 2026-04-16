@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -36,7 +37,8 @@ export async function PATCH(
     if (dueDate !== undefined)
       updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
-    const updated = await prisma.$transaction(async (tx: any) => {
+    const updated = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const t = await tx.task.update({
         where: { id },
         data: updateData,
@@ -55,7 +57,8 @@ export async function PATCH(
       });
 
       return t;
-    });
+      },
+    );
 
     const withRelations = await prisma.task.findUnique({
       where: { id: updated.id },

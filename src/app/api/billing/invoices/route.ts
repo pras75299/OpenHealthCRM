@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -101,7 +102,8 @@ export async function POST(request: Request) {
 
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-    const invoice = await prisma.$transaction(async (tx: any) => {
+    const invoice = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const inv = await tx.invoice.create({
         data: {
           organizationId: orgId,
@@ -140,7 +142,8 @@ export async function POST(request: Request) {
       });
 
       return inv;
-    });
+      },
+    );
 
     const withItems = await prisma.invoice.findUnique({
       where: { id: invoice.id },

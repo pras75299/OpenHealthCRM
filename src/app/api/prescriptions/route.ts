@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -82,7 +83,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const prescription = await prisma.$transaction(async (tx: any) => {
+    const prescription = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const rx = await tx.prescription.create({
         data: {
           organizationId: orgId,
@@ -110,7 +112,8 @@ export async function POST(request: Request) {
       });
 
       return rx;
-    });
+      },
+    );
 
     return NextResponse.json(prescription, { status: 201 });
   } catch (error) {

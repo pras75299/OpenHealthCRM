@@ -1,12 +1,11 @@
 // Multi-channel communications library
 // Dependencies: npm install twilio nodemailer
+import nodemailer from "nodemailer";
+import twilio, { Twilio } from "twilio";
 import { logServerError } from "@/lib/safe-logger";
 
-const twilio = require("twilio");
-const nodemailer = require("nodemailer");
-
 // Twilio Configuration - lazy initialization to avoid build errors
-let twilioClient: any = null;
+let twilioClient: Twilio | null = null;
 
 function getTwilioClient() {
   if (!twilioClient && process.env.TWILIO_ACCOUNT_SID) {

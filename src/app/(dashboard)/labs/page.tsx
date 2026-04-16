@@ -5,7 +5,6 @@ import {
   Beaker,
   Filter as FilterIcon,
   Download,
-  Plus,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

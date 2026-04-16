@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Calendar } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/select";
 import { logClientError } from "@/lib/client-logger";
 
+type PatientOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  mrn: string;
+};
+
 interface AddToWaitlistDialogProps {
   onSuccess: () => void;
 }
@@ -31,7 +38,7 @@ interface AddToWaitlistDialogProps {
 export function AddToWaitlistDialog({ onSuccess }: AddToWaitlistDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [patients, setPatients] = React.useState<any[]>([]);
+  const [patients, setPatients] = React.useState<PatientOption[]>([]);
   const [formData, setFormData] = React.useState({
     patientId: "",
     preferredDate: "",

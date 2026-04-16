@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Filter as FilterIcon,
   Download,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,17 +92,6 @@ export default function ConsentsPage() {
 
     return matchesSearch && matchesFilter;
   });
-
-  const consentTypes = [
-    "Treatment",
-    "Surgery",
-    "Medication",
-    "Research",
-    "Photography",
-    "Telehealth",
-    "Data Sharing",
-    "Insurance",
-  ];
 
   return (
     <div className="flex flex-col gap-6 w-full h-full">

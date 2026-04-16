@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -25,7 +26,11 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      consents.map((c: any) => ({
+      consents.map((c: Prisma.ConsentGetPayload<{
+        include: {
+          patient: { select: { firstName: true; lastName: true } };
+        };
+      }>) => ({
         id: c.id,
         patientId: c.patientId,
         patientName: `${c.patient.firstName} ${c.patient.lastName}`,

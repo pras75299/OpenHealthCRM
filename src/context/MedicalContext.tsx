@@ -50,7 +50,6 @@ const MedicalContext = React.createContext<MedicalContextType | undefined>(undef
 export function MedicalProvider({ children }: { children: React.ReactNode }) {
   const [patients, setPatients] = React.useState<Patient[]>([])
   const [appointments, setAppointments] = React.useState<Appointment[]>([])
-  const [loading, setLoading] = React.useState(true)
 
   const fetchData = React.useCallback(async () => {
     try {
@@ -68,8 +67,6 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       logClientError("Initial medical data fetch failed", error);
-    } finally {
-      setLoading(false);
     }
   }, []);
 

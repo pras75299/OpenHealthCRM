@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -21,7 +22,13 @@ export async function GET() {
     });
 
     return NextResponse.json(
-      entries.map((e: any) => ({
+      entries.map((e: Prisma.WaitlistEntryGetPayload<{
+        include: {
+          patient: {
+            select: { firstName: true; lastName: true; phone: true; email: true };
+          };
+        };
+      }>) => ({
         id: e.id,
         patientId: e.patientId,
         patientName: `${e.patient.firstName} ${e.patient.lastName}`,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import {
   Activity,
@@ -261,11 +261,13 @@ function DashboardHeader({
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { patients, appointments } = useMedical();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   const title = useMemo(() => {
     if (routeTitles[pathname]) return routeTitles[pathname];

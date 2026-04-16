@@ -9,7 +9,7 @@ const skipDbInit = process.env.SKIP_DB_INIT === "true";
 
 const connectionString = process.env.DATABASE_URL || "";
 
-let adapter: any = undefined;
+let adapter: PrismaPg | undefined;
 
 // Neon cold starts can take 5–15s; increase timeout so first request doesn't fail
 if (!skipDbInit && connectionString) {
@@ -25,17 +25,17 @@ if (!skipDbInit && connectionString) {
   }
 }
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as { prisma?: PrismaClient };
 
-let client: any;
+let client: PrismaClient;
 if (skipDbInit) {
   // during build or when skipping, provide a dummy proxy client that throws if used
   client =
     globalForPrisma.prisma ||
-    new Proxy(
+    (new Proxy(
       {},
       {
-        get(target, prop) {
+        get(_target, prop) {
           if (prop === "__isPrismaClient") return true;
           return () => {
             throw new Error(
@@ -44,7 +44,7 @@ if (skipDbInit) {
           };
         },
       },
-    );
+    ) as PrismaClient);
 } else {
   client =
     globalForPrisma.prisma ||
@@ -58,4 +58,4 @@ if (skipDbInit) {
   if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
 }
 
-export const prisma: typeof client = client;
+export const prisma = client;

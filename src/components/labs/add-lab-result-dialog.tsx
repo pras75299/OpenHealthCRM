@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Select,
@@ -24,6 +23,12 @@ import {
 } from "@/components/ui/select";
 import { logClientError } from "@/lib/client-logger";
 
+type PatientOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
+
 interface AddLabResultDialogProps {
   onSuccess: () => void;
 }
@@ -31,7 +36,7 @@ interface AddLabResultDialogProps {
 export function AddLabResultDialog({ onSuccess }: AddLabResultDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [patients, setPatients] = React.useState<any[]>([]);
+  const [patients, setPatients] = React.useState<PatientOption[]>([]);
   const [formData, setFormData] = React.useState({
     patientId: "",
     testName: "",

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Repeat2, Plus } from "lucide-react";
+import { Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

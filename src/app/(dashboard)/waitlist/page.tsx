@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Filter as FilterIcon,
   Download,
   Clock,

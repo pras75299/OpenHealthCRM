@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 export default function DashboardPage() {
   const { patients, appointments, refetchPatients } = useMedical();
 
-  const today = new Date().toISOString().split("T")[0];
+  const [today] = React.useState(() => new Date().toISOString().split("T")[0]);
+  const [now] = React.useState(() => Date.now());
   const cancelledStatus = (status: string) => status?.toLowerCase() === "cancelled";
 
   const appointmentsToday = appointments.filter(
@@ -46,7 +47,7 @@ export default function DashboardPage() {
   const upcomingAppointments = appointments
     .filter((appointment) => {
       if (cancelledStatus(appointment.status)) return false;
-      return getAppointmentTime(appointment) >= Date.now();
+      return getAppointmentTime(appointment) >= now;
     })
     .sort((a, b) => getAppointmentTime(a) - getAppointmentTime(b))
     .slice(0, 5);

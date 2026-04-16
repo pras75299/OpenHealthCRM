@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -56,11 +55,7 @@ export default function CommunicationsPage() {
     setStatusFilter(value === "all" ? "" : value);
   };
 
-  useEffect(() => {
-    fetchCommunications();
-  }, [channelFilter, statusFilter]);
-
-  async function fetchCommunications() {
+  const fetchCommunications = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (channelFilter) params.append("channel", channelFilter);
@@ -76,7 +71,11 @@ export default function CommunicationsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [channelFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchCommunications();
+  }, [fetchCommunications]);
 
   const filteredComms = communications.filter((comm) => {
     const patientName =

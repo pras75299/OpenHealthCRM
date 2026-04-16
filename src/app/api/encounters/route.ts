@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    const encounter = await prisma.$transaction(async (tx: any) => {
+    const encounter = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const enc = await tx.encounter.create({
         data: {
           organizationId: orgId,
@@ -86,7 +88,8 @@ export async function POST(request: Request) {
       });
 
       return enc;
-    });
+      },
+    );
 
     return NextResponse.json(encounter, { status: 201 });
   } catch (error) {

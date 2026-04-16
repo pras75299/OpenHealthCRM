@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -66,7 +67,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    const task = await prisma.$transaction(async (tx: any) => {
+    const task = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const t = await tx.task.create({
         data: {
           organizationId: orgId,
@@ -94,7 +96,8 @@ export async function POST(request: Request) {
       });
 
       return t;
-    });
+      },
+    );
 
     const withRelations = await prisma.task.findUnique({
       where: { id: task.id },

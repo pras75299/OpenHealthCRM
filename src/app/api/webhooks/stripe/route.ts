@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import stripe from "@/lib/stripe";
 import { logServerError } from "@/lib/safe-logger";
-
-interface StripeEvent {
-  type: string;
-  data: {
-    object: any;
-  };
-}
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
@@ -25,7 +19,7 @@ export async function POST(request: Request) {
       );
     }
 
-    let event: StripeEvent;
+    let event: Stripe.Event;
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
@@ -37,17 +31,17 @@ export async function POST(request: Request) {
     // Handle payment intent events
     switch (event.type) {
       case "payment_intent.succeeded":
-        const paymentIntent = event.data.object;
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentSuccess(paymentIntent);
         break;
 
       case "payment_intent.payment_failed":
-        const failedIntent = event.data.object;
+        const failedIntent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentFailure(failedIntent);
         break;
 
       case "charge.refunded":
-        const charge = event.data.object;
+        const charge = event.data.object as Stripe.Charge;
         await handleRefund(charge);
         break;
 
@@ -65,7 +59,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function handlePaymentSuccess(paymentIntent: any) {
+async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   const stripePaymentId = paymentIntent.id;
 
   const payment = await prisma.payment.findFirst({
@@ -94,7 +88,7 @@ async function handlePaymentSuccess(paymentIntent: any) {
   );
 }
 
-async function handlePaymentFailure(paymentIntent: any) {
+async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent) {
   const stripePaymentId = paymentIntent.id;
 
   const payment = await prisma.payment.findFirst({
@@ -115,7 +109,7 @@ async function handlePaymentFailure(paymentIntent: any) {
   console.log(`Payment ${payment.id} failed`);
 }
 
-async function handleRefund(charge: any) {
+async function handleRefund(charge: Stripe.Charge) {
   if (!charge.payment_intent) {
     console.warn("Refund charge has no payment intent");
     return;

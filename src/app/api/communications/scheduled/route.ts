@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/auth";
-import { getOrgId, assertOrgScope } from "@/lib/org";
-import { createAuditLog } from "@/lib/audit";
 import {
   sendSMS,
   sendEmail,
   sendWhatsApp,
-  renderAppointmentReminder,
 } from "@/lib/communications";
 import { logServerError } from "@/lib/safe-logger";
+
+type ScheduledCommunication = Prisma.CommunicationGetPayload<{
+  include: {
+    patient: true;
+  };
+}>;
 
 /**
  * CRON endpoint: Processes scheduled communications
@@ -43,9 +46,9 @@ export async function POST(request: NextRequest) {
     let sent = 0;
     let failed = 0;
 
-    for (const comm of scheduledComms) {
+    for (const comm of scheduledComms as ScheduledCommunication[]) {
       try {
-        const patient = comm.patient as any;
+        const patient = comm.patient;
 
         // Send based on channel
         if (comm.channel === "sms" && patient.phone) {

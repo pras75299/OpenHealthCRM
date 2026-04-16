@@ -13,7 +13,8 @@ export type RoleName =
 /**
  * Get current user ID from session.
  */
-export async function getCurrentUserId(_orgId?: string): Promise<string> {
+export async function getCurrentUserId(orgId?: string): Promise<string> {
+  void orgId;
   const { userId } = await requireOrgContext();
   return userId;
 }

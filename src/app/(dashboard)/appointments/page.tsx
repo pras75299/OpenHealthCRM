@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
-import { format } from "date-fns"
 import { useMedical, Appointment } from "@/context/MedicalContext"
 import { BookAppointmentDialog } from "@/components/features/appointments/book-appointment-dialog"
 import {
@@ -202,11 +201,6 @@ function AppointmentsPageContent() {
         }
       })
   }, [appointments, patients])
-
-  const handleRemoveCalendarEvent = (id: string) => {
-    updateAppointment(id, { status: "Cancelled" })
-    toast.success("Appointment cancelled.")
-  }
 
   const filteredAppointments = appointments.filter((appointment) => {
     const normalized = searchQuery.trim().toLowerCase()

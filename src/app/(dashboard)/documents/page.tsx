@@ -5,7 +5,6 @@ import {
   FileText,
   Filter as FilterIcon,
   Download,
-  Plus,
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

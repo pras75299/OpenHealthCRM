@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const item = await prisma.$transaction(async (tx: any) => {
+    const item = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const inv = await tx.inventoryItem.create({
         data: {
           organizationId: orgId,
@@ -66,7 +68,8 @@ export async function POST(request: Request) {
       });
 
       return inv;
-    });
+      },
+    );
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {

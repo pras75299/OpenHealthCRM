@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
@@ -26,7 +27,11 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      labResults.map((l: any) => ({
+      labResults.map((l: Prisma.LabResultGetPayload<{
+        include: {
+          patient: { select: { firstName: true; lastName: true } };
+        };
+      }>) => ({
         id: l.id,
         patientId: l.patientId,
         patientName: `${l.patient.firstName} ${l.patient.lastName}`,

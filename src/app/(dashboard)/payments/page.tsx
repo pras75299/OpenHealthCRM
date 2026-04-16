@@ -5,7 +5,6 @@ import {
   CreditCard,
   Filter as FilterIcon,
   Download,
-  Plus,
   DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { PaymentDialog } from "@/components/billing/payment-dialog";
 import { logClientError } from "@/lib/client-logger";
 
 interface Payment {
