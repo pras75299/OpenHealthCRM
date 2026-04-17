@@ -22,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
+
+type PatientOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
 
 interface AddConsentDialogProps {
   onSuccess: () => void;
@@ -30,7 +37,7 @@ interface AddConsentDialogProps {
 export function AddConsentDialog({ onSuccess }: AddConsentDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [patients, setPatients] = React.useState<any[]>([]);
+  const [patients, setPatients] = React.useState<PatientOption[]>([]);
   const [formData, setFormData] = React.useState({
     patientId: "",
     consentType: "",
@@ -53,7 +60,7 @@ export function AddConsentDialog({ onSuccess }: AddConsentDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Consent patient lookup failed", error);
     }
   };
 
@@ -105,7 +112,7 @@ export function AddConsentDialog({ onSuccess }: AddConsentDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to record consent");
-      console.error(error);
+      logClientError("Create consent failed", error);
     } finally {
       setLoading(false);
     }

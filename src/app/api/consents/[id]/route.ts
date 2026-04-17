@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function PATCH(
     request: Request,
@@ -11,7 +12,11 @@ export async function PATCH(
     try {
         const orgId = await getOrgId();
         assertOrgScope(orgId);
-        const userId = await getCurrentUserId(orgId);
+        const authz = await requireAnyPermission(orgId, [
+            { action: "patients:write", resource: "patients" },
+        ]);
+        if (authz.response) return authz.response;
+        const { userId } = authz;
 
         const { id } = await params;
         const body = await request.json();
@@ -54,7 +59,7 @@ export async function PATCH(
             signedAt: updated.signedAt?.toISOString() ?? null,
         });
     } catch (error) {
-        console.error("Error updating consent:", error);
+        logServerError("Error updating consent", error);
         return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });
     }
 }

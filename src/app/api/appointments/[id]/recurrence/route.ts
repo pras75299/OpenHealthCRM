@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(
   request: Request,
@@ -11,7 +12,11 @@ export async function POST(
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const { id } = await params;
 
@@ -55,7 +60,7 @@ export async function POST(
 
     return NextResponse.json(updatedAppointment, { status: 200 });
   } catch (error) {
-    console.error("Error updating appointment recurrence:", error);
+    logServerError("Error updating appointment recurrence", error);
     return NextResponse.json(
       { error: "Failed to update appointment recurrence" },
       { status: 500 },

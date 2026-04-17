@@ -116,6 +116,8 @@ model Patient {
   bloodType           String?
   allergies           String?             // JSON array or comma-separated
   primaryCareProvider String?
+  passwordHash        String?
+  sensitiveDataEncrypted String?
   emergencyContact    EmergencyContact?
   familyHistory       String?             // JSON for genetic/family history
   status              String              @default("Active") // Active, Inactive, Archived
@@ -133,6 +135,20 @@ model Patient {
   invoices            Invoice[]
   documents           Document[]
   waitlistEntries     WaitlistEntry[]
+  sessions            PatientSession[]
+}
+
+model PatientSession {
+  id         String    @id @default(cuid())
+  patientId  String
+  patient    Patient   @relation(fields: [patientId], references: [id])
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }
 
 model EmergencyContact {
@@ -143,6 +159,7 @@ model EmergencyContact {
   relationship String?
   phone     String
   email     String?
+  contactDataEncrypted String?
 }
 
 model Consent {
@@ -492,8 +509,10 @@ model AuditLog {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  actorType      String       @default("user") // user, patient, system, webhook
+  actorIdentifier String?
   action         String       // CREATE, UPDATE, DELETE
   entityType     String
   entityId       String

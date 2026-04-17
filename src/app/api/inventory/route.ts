@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET() {
   try {
@@ -15,7 +17,7 @@ export async function GET() {
 
     return NextResponse.json(items);
   } catch (error) {
-    console.error("Error fetching inventory:", error);
+    logServerError("Error fetching inventory", error);
     return NextResponse.json(
       { error: "Failed to fetch inventory" },
       { status: 500 },
@@ -27,7 +29,11 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "inventory:write", resource: "inventory" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { name, sku, category, quantity, reorderLevel, unit } = body;
@@ -36,7 +42,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    const item = await prisma.$transaction(async (tx: any) => {
+    const item = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const inv = await tx.inventoryItem.create({
         data: {
           organizationId: orgId,
@@ -61,11 +68,12 @@ export async function POST(request: Request) {
       });
 
       return inv;
-    });
+      },
+    );
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
-    console.error("Error creating inventory item:", error);
+    logServerError("Error creating inventory item", error);
     return NextResponse.json(
       { error: "Failed to create inventory item" },
       { status: 500 },

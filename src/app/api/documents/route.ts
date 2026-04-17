@@ -1,8 +1,10 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -24,7 +26,11 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      documents.map((d: any) => ({
+      documents.map((d: Prisma.DocumentGetPayload<{
+        include: {
+          patient: { select: { firstName: true; lastName: true } };
+        };
+      }>) => ({
         id: d.id,
         patientId: d.patientId,
         patientName: `${d.patient.firstName} ${d.patient.lastName}`,
@@ -36,7 +42,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching documents:", error);
+    logServerError("Error fetching documents", error);
     return NextResponse.json(
       { error: "Failed to fetch documents" },
       { status: 500 },
@@ -49,6 +55,16 @@ export async function POST(request: Request) {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWriteDocuments = await hasPermission(
+      userId,
+      orgId,
+      "patients:write",
+      "patients",
+    );
+
+    if (!canWriteDocuments) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { patientId, type, name, storageKey, mimeType } = body;
@@ -110,7 +126,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating document:", error);
+    logServerError("Error creating document", error);
     return NextResponse.json(
       { error: "Failed to create document" },
       { status: 500 },

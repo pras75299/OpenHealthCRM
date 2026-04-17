@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/auth";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
 import { createAuditLog } from "@/lib/audit";
 import { sendSMS, sendEmail, sendWhatsApp } from "@/lib/communications";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
 
     const searchParams = request.nextUrl.searchParams;
     const patientId = searchParams.get("patientId");
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(communications);
   } catch (error) {
-    console.error("GET /api/communications error:", error);
+    logServerError("GET /api/communications error", error);
     return NextResponse.json(
       { error: "Failed to fetch communications" },
       { status: 500 },
@@ -53,7 +53,12 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, channel, type, content, scheduledFor } = body;
@@ -224,7 +229,7 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (sendError) {
-        console.error("Failed to send communication:", sendError);
+        logServerError("Failed to send communication", sendError);
         finalCommunication = await prisma.communication.update({
           where: { id: communication.id },
           data: { status: "failed" },
@@ -252,13 +257,13 @@ export async function POST(request: NextRequest) {
       entityId: communication.id,
       afterState: JSON.stringify({ channel, type, patientId }),
     }).catch((auditError) => {
-      console.error("Failed to create audit log:", auditError);
+      logServerError("Failed to create audit log", auditError);
       // Silently fail - audit logging is best-effort
     });
 
     return NextResponse.json(finalCommunication, { status: 201 });
   } catch (error) {
-    console.error("POST /api/communications error:", error);
+    logServerError("POST /api/communications error", error);
     return NextResponse.json(
       { error: "Failed to create communication" },
       { status: 500 },

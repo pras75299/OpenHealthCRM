@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-import { useMedical } from "@/context/MedicalContext";
 import type { Patient } from "@/context/MedicalContext";
 
 const bookAppointmentSchema = z.object({
@@ -97,6 +96,18 @@ export function BookAppointmentDialog({
       time: "",
       type: "",
     },
+  });
+  const selectedPatientId = useWatch({
+    control: form.control,
+    name: "patientId",
+  });
+  const selectedProvider = useWatch({
+    control: form.control,
+    name: "provider",
+  });
+  const selectedType = useWatch({
+    control: form.control,
+    name: "type",
   });
 
   const onSubmit = (data: BookAppointmentFormValues) => {
@@ -174,7 +185,7 @@ export function BookAppointmentDialog({
                     </Label>
                     <Select
                       onValueChange={(v) => form.setValue("patientId", v)}
-                      value={form.watch("patientId")}
+                      value={selectedPatientId}
                     >
                       <SelectTrigger
                         className={cn(
@@ -217,7 +228,7 @@ export function BookAppointmentDialog({
                     </Label>
                     <Select
                       onValueChange={(v) => form.setValue("provider", v)}
-                      value={form.watch("provider")}
+                      value={selectedProvider}
                     >
                       <SelectTrigger
                         className={cn(
@@ -322,7 +333,7 @@ export function BookAppointmentDialog({
                     </Label>
                     <Select
                       onValueChange={(v) => form.setValue("type", v)}
-                      value={form.watch("type")}
+                      value={selectedType}
                     >
                       <SelectTrigger
                         className={cn(

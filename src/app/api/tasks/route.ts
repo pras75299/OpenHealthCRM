@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -30,7 +32,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(tasks);
   } catch (error) {
-    console.error("Error fetching tasks:", error);
+    logServerError("Error fetching tasks", error);
     return NextResponse.json(
       { error: "Failed to fetch tasks" },
       { status: 500 },
@@ -42,7 +44,12 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const {
@@ -60,7 +67,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    const task = await prisma.$transaction(async (tx: any) => {
+    const task = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const t = await tx.task.create({
         data: {
           organizationId: orgId,
@@ -88,7 +96,8 @@ export async function POST(request: Request) {
       });
 
       return t;
-    });
+      },
+    );
 
     const withRelations = await prisma.task.findUnique({
       where: { id: task.id },
@@ -101,7 +110,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(withRelations ?? task, { status: 201 });
   } catch (error) {
-    console.error("Error creating task:", error);
+    logServerError("Error creating task", error);
     return NextResponse.json(
       { error: "Failed to create task" },
       { status: 500 },

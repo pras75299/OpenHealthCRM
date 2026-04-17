@@ -1,15 +1,27 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import stripe from "@/lib/stripe";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWriteBilling = await hasPermission(
+      userId,
+      orgId,
+      "billing:write",
+      "billing",
+    );
+
+    if (!canWriteBilling) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { invoiceId, amount, currency = "usd", description } = body;
@@ -79,7 +91,7 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Error creating payment intent:", error);
+    logServerError("Error creating payment intent", error);
     return NextResponse.json(
       { error: "Failed to create payment intent" },
       { status: 500 },
@@ -113,7 +125,17 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json(
-      payments.map((p: any) => ({
+      payments.map((p: Prisma.PaymentGetPayload<{
+        include: {
+          invoice: {
+            select: {
+              invoiceNumber: true;
+              currency: true;
+              patient: { select: { firstName: true; lastName: true } };
+            };
+          };
+        };
+      }>) => ({
         id: p.id,
         invoiceId: p.invoiceId,
         invoiceNumber: p.invoice.invoiceNumber,
@@ -125,7 +147,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("Error fetching payments:", error);
+    logServerError("Error fetching payments", error);
     return NextResponse.json(
       { error: "Failed to fetch payments" },
       { status: 500 },

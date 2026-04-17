@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -22,6 +21,7 @@ import {
 import { MessageCircle, Mail, MessageSquare, Phone } from "lucide-react";
 import { AddCommunicationDialog } from "@/components/communications/add-communication-dialog";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/client-logger";
 
 interface Communication {
   id: string;
@@ -55,11 +55,7 @@ export default function CommunicationsPage() {
     setStatusFilter(value === "all" ? "" : value);
   };
 
-  useEffect(() => {
-    fetchCommunications();
-  }, [channelFilter, statusFilter]);
-
-  async function fetchCommunications() {
+  const fetchCommunications = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (channelFilter) params.append("channel", channelFilter);
@@ -71,11 +67,15 @@ export default function CommunicationsPage() {
       setCommunications(data);
     } catch (error) {
       toast.error("Failed to fetch communications");
-      console.error(error);
+      logClientError("Communications list fetch failed", error);
     } finally {
       setLoading(false);
     }
-  }
+  }, [channelFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchCommunications();
+  }, [fetchCommunications]);
 
   const filteredComms = communications.filter((comm) => {
     const patientName =

@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function PATCH(
   request: Request,
@@ -11,7 +13,12 @@ export async function PATCH(
     const { id } = await params;
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const existing = await prisma.task.findFirst({
       where: { id, organizationId: orgId },
@@ -30,7 +37,8 @@ export async function PATCH(
     if (dueDate !== undefined)
       updateData.dueDate = dueDate ? new Date(dueDate) : null;
 
-    const updated = await prisma.$transaction(async (tx: any) => {
+    const updated = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const t = await tx.task.update({
         where: { id },
         data: updateData,
@@ -49,7 +57,8 @@ export async function PATCH(
       });
 
       return t;
-    });
+      },
+    );
 
     const withRelations = await prisma.task.findUnique({
       where: { id: updated.id },
@@ -62,7 +71,7 @@ export async function PATCH(
 
     return NextResponse.json(withRelations ?? updated);
   } catch (error) {
-    console.error("Error updating task:", error);
+    logServerError("Error updating task", error);
     return NextResponse.json(
       { error: "Failed to update task" },
       { status: 500 },

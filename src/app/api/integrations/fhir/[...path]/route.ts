@@ -1,0 +1,181 @@
+import { NextResponse } from "next/server";
+import { requireOrgContext, isAuthContextError } from "@/lib/org";
+import { hasPermission } from "@/lib/auth";
+import { logServerError } from "@/lib/safe-logger";
+
+export const runtime = "nodejs";
+
+const FHIR_ID_PATTERN = /^[A-Za-z0-9.-]{1,64}$/;
+
+const ALLOWED_FHIR_COLLECTIONS = {
+  AllergyIntolerance: ["patient", "_count"],
+  Appointment: ["patient", "date", "status", "_count"],
+  Condition: ["patient", "clinical-status", "_count"],
+  DiagnosticReport: ["patient", "category", "status", "_count"],
+  Encounter: ["patient", "_count"],
+  MedicationRequest: ["patient", "status", "_count"],
+  Observation: ["subject", "code", "date", "_count"],
+} as const;
+
+function getFhirBaseUrl() {
+  return process.env.FHIR_BASE_URL?.replace(/\/+$/, "") ?? "";
+}
+
+function buildFhirUrl(pathSegments: string[], requestUrl: string) {
+  const upstream = new URL(`${getFhirBaseUrl()}/${pathSegments.join("/")}`);
+  const incomingUrl = new URL(requestUrl);
+
+  incomingUrl.searchParams.forEach((value, key) => {
+    upstream.searchParams.append(key, value);
+  });
+
+  return upstream.toString();
+}
+
+function isValidPatientReference(value: string) {
+  const [resourceType, id] = value.split("/");
+  return resourceType === "Patient" && Boolean(id) && FHIR_ID_PATTERN.test(id);
+}
+
+function validateFhirPath(path: string[], requestUrl: string) {
+  const [resourceType, resourceId, ...rest] = path;
+
+  if (!resourceType) {
+    return { error: "FHIR path is required", status: 400 };
+  }
+
+  if (resourceType === "Patient") {
+    if (!resourceId || rest.length > 0 || !FHIR_ID_PATTERN.test(resourceId)) {
+      return {
+        error: "Only direct Patient/{id} reads are allowed",
+        status: 403,
+      };
+    }
+
+    const incomingUrl = new URL(requestUrl);
+    if (Array.from(incomingUrl.searchParams.keys()).length > 0) {
+      return {
+        error: "Patient reads do not allow arbitrary query params",
+        status: 403,
+      };
+    }
+
+    return null;
+  }
+
+  const allowedParams = ALLOWED_FHIR_COLLECTIONS[
+    resourceType as keyof typeof ALLOWED_FHIR_COLLECTIONS
+  ];
+
+  if (!allowedParams || resourceId || rest.length > 0) {
+    return {
+      error: "FHIR path is outside the allowed read-only proxy scope",
+      status: 403,
+    };
+  }
+
+  const incomingUrl = new URL(requestUrl);
+  const params = Array.from(incomingUrl.searchParams.entries());
+
+  for (const [key, value] of params) {
+    if (!allowedParams.includes(key as never)) {
+      return {
+        error: `FHIR query parameter '${key}' is not allowed for ${resourceType}`,
+        status: 403,
+      };
+    }
+
+    if (
+      (key === "patient" || key === "subject") &&
+      !isValidPatientReference(value)
+    ) {
+      return {
+        error: `FHIR query parameter '${key}' must be a Patient/<id> reference`,
+        status: 400,
+      };
+    }
+  }
+
+  const hasPatientScope = params.some(
+    ([key]) => key === "patient" || key === "subject",
+  );
+
+  if (!hasPatientScope) {
+    return {
+      error: `${resourceType} reads must be explicitly scoped to a patient reference`,
+      status: 403,
+    };
+  }
+
+  return null;
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
+  try {
+    const { userId, organizationId } = await requireOrgContext();
+    const canReadPatients = await hasPermission(
+      userId,
+      organizationId,
+      "patients:read",
+      "patients",
+    );
+
+    if (!canReadPatients) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const baseUrl = getFhirBaseUrl();
+    if (!baseUrl) {
+      return NextResponse.json(
+        { error: "FHIR integration is not configured" },
+        { status: 501 },
+      );
+    }
+
+    const { path } = await params;
+    if (!path?.length) {
+      return NextResponse.json({ error: "FHIR path is required" }, { status: 400 });
+    }
+
+    const validationError = validateFhirPath(path, request.url);
+    if (validationError) {
+      return NextResponse.json(
+        { error: validationError.error },
+        { status: validationError.status },
+      );
+    }
+
+    const response = await fetch(buildFhirUrl(path, request.url), {
+      headers: {
+        Accept: "application/fhir+json, application/json",
+        ...(process.env.FHIR_AUTH_TOKEN
+          ? { Authorization: `Bearer ${process.env.FHIR_AUTH_TOKEN}` }
+          : {}),
+      },
+      cache: "no-store",
+    });
+
+    const contentType = response.headers.get("content-type") ?? "application/json";
+    const body = await response.text();
+
+    return new NextResponse(body, {
+      status: response.status,
+      headers: {
+        "Content-Type": contentType,
+      },
+    });
+  } catch (error) {
+    if (isAuthContextError(error)) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
+    logServerError("FHIR proxy request failed", error);
+    return NextResponse.json(
+      { error: "Failed to reach FHIR upstream" },
+      { status: 502 },
+    );
+  }
+}

@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { logClientError } from "@/lib/client-logger";
+
+type PatientOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
 
 interface UploadDocumentDialogProps {
   onSuccess: () => void;
@@ -29,7 +36,7 @@ interface UploadDocumentDialogProps {
 export function UploadDocumentDialog({ onSuccess }: UploadDocumentDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [patients, setPatients] = React.useState<any[]>([]);
+  const [patients, setPatients] = React.useState<PatientOption[]>([]);
   const [formData, setFormData] = React.useState({
     patientId: "",
     documentType: "medical_record",
@@ -51,7 +58,7 @@ export function UploadDocumentDialog({ onSuccess }: UploadDocumentDialogProps) {
       setPatients(data);
     } catch (error) {
       toast.error("Failed to load patients");
-      console.error(error);
+      logClientError("Upload document patient lookup failed", error);
     }
   };
 
@@ -114,7 +121,7 @@ export function UploadDocumentDialog({ onSuccess }: UploadDocumentDialogProps) {
       onSuccess();
     } catch (error) {
       toast.error("Failed to upload document");
-      console.error(error);
+      logClientError("Upload document submission failed", error);
     } finally {
       setLoading(false);
     }

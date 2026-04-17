@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Filter as FilterIcon,
   Download,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { AddConsentDialog } from "@/components/consents/add-consent-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface Consent {
   id: string;
@@ -50,7 +50,7 @@ export default function ConsentsPage() {
       setConsents(data);
     } catch (error) {
       toast.error("Failed to load consents");
-      console.error(error);
+      logClientError("Consent list fetch failed", error);
     } finally {
       setLoading(false);
     }
@@ -92,17 +92,6 @@ export default function ConsentsPage() {
 
     return matchesSearch && matchesFilter;
   });
-
-  const consentTypes = [
-    "Treatment",
-    "Surgery",
-    "Medication",
-    "Research",
-    "Photography",
-    "Telehealth",
-    "Data Sharing",
-    "Insurance",
-  ];
 
   return (
     <div className="flex flex-col gap-6 w-full h-full">

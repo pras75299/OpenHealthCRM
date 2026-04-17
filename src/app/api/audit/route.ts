@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:read", resource: "patients" },
+      { action: "encounters:read", resource: "encounters" },
+      { action: "billing:read", resource: "billing" },
+    ]);
+    if (authz.response) return authz.response;
 
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get("entityType");
@@ -25,7 +33,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(logs);
   } catch (error) {
-    console.error("Error fetching audit logs:", error);
+    logServerError("Error fetching audit logs", error);
     return NextResponse.json(
       { error: "Failed to fetch audit logs" },
       { status: 500 }

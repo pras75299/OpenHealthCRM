@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(campaigns);
   } catch (error) {
-    console.error("GET /api/communications/campaigns error:", error);
+    logServerError("GET /api/communications/campaigns error", error);
     return NextResponse.json(
       { error: "Failed to fetch campaigns" },
       { status: 500 },
@@ -26,6 +29,12 @@ export async function POST(request: NextRequest) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "patients:write", resource: "patients" },
+      { action: "appointments:write", resource: "appointments" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { name, type, triggerType } = body;
@@ -47,9 +56,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await createAuditLog({
+      organizationId: orgId,
+      userId,
+      action: "CREATE",
+      entityType: "Campaign",
+      entityId: campaign.id,
+      afterState: JSON.stringify(campaign),
+    });
+
     return NextResponse.json(campaign, { status: 201 });
   } catch (error) {
-    console.error("POST /api/communications/campaigns error:", error);
+    logServerError("POST /api/communications/campaigns error", error);
     return NextResponse.json(
       { error: "Failed to create campaign" },
       { status: 500 },

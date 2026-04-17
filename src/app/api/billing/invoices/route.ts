@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(invoices);
   } catch (error) {
-    console.error("Error fetching invoices:", error);
+    logServerError("Error fetching invoices", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
       { status: 500 },
@@ -40,6 +42,16 @@ export async function POST(request: Request) {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWriteBilling = await hasPermission(
+      userId,
+      orgId,
+      "billing:write",
+      "billing",
+    );
+
+    if (!canWriteBilling) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { patientId, dueDate, lineItems, idempotencyKey } = body;
@@ -90,7 +102,8 @@ export async function POST(request: Request) {
 
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-    const invoice = await prisma.$transaction(async (tx: any) => {
+    const invoice = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const inv = await tx.invoice.create({
         data: {
           organizationId: orgId,
@@ -129,7 +142,8 @@ export async function POST(request: Request) {
       });
 
       return inv;
-    });
+      },
+    );
 
     const withItems = await prisma.invoice.findUnique({
       where: { id: invoice.id },
@@ -138,7 +152,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(withItems, { status: 201 });
   } catch (error) {
-    console.error("Error creating invoice:", error);
+    logServerError("Error creating invoice", error);
     return NextResponse.json(
       { error: "Failed to create invoice" },
       { status: 500 },

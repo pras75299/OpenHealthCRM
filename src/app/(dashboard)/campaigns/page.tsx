@@ -14,6 +14,7 @@ import {
 import { Zap, Radio } from "lucide-react";
 import { AddCampaignDialog } from "@/components/communications/add-campaign-dialog";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/client-logger";
 
 interface Campaign {
   id: string;
@@ -40,7 +41,7 @@ export default function CampaignsPage() {
       setCampaigns(data);
     } catch (error) {
       toast.error("Failed to fetch campaigns");
-      console.error(error);
+      logClientError("Campaign list fetch failed", error);
     } finally {
       setLoading(false);
     }

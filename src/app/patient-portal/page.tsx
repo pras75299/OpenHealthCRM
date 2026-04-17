@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Calendar, FileText, Heart, MessageSquare } from "lucide-react";
+import {
+  Activity,
+  Calendar,
+  FileText,
+  Heart,
+  LogOut,
+  MessageSquare,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +19,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useVitalsStream } from "@/hooks/use-vitals-stream";
+import { logClientError } from "@/lib/client-logger";
+import type { VitalSnapshot } from "@/lib/vitals";
 
 interface PatientData {
   id: string;
@@ -23,73 +33,49 @@ interface PatientData {
 
 export default function PatientPortalPage() {
   const [patient, setPatient] = React.useState<PatientData | null>(null);
-  const [appointments, setAppointments] = React.useState<any[]>([]);
-  const [labResults, setLabResults] = React.useState<any[]>([]);
+  const [appointments, setAppointments] = React.useState<Array<{ id: string; type: string; provider: string; status: string }>>([]);
+  const [labResults, setLabResults] = React.useState<Array<{ id: string; testName: string; resultValue: string | null; unit: string | null; status: string }>>([]);
+  const [overviewVital, setOverviewVital] = React.useState<VitalSnapshot | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
+  const { latestVital, status: vitalsStatus } = useVitalsStream(patient?.id);
 
-  React.useEffect(() => {
-    // Check if patient is logged in
-    const token = localStorage.getItem("patientToken");
-    const patientId = localStorage.getItem("patientId");
-    const patientName = localStorage.getItem("patientName");
-
-    if (!token || !patientId) {
-      router.push("/patient-login");
-      return;
-    }
-
-    // Set patient data from localStorage
-    setPatient({
-      id: patientId,
-      firstName: patientName?.split(" ")[0] || "",
-      lastName: patientName?.split(" ").slice(1).join(" ") || "",
-      email: "",
-      mrn: "",
-    });
-
-    // Fetch patient's data
-    fetchPatientData(patientId, token);
-  }, [router]);
-
-  const fetchPatientData = async (patientId: string, token: string) => {
+  const fetchPatientData = React.useCallback(async () => {
     try {
       setLoading(true);
+      const overviewResponse = await fetch("/api/patient-portal/overview");
 
-      // Fetch appointments
-      const aptsResponse = await fetch(
-        `/api/appointments?patientId=${patientId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (aptsResponse.ok) {
-        const apts = await aptsResponse.json();
-        setAppointments(apts.slice(0, 3)); // Show only upcoming 3
+      if (!overviewResponse.ok) {
+        throw new Error("Failed to fetch patient data");
       }
 
-      // Fetch lab results
-      const labsResponse = await fetch(`/api/labs?patientId=${patientId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (labsResponse.ok) {
-        const labs = await labsResponse.json();
-        setLabResults(labs.slice(0, 3)); // Show only latest 3
-      }
+      const overview = await overviewResponse.json();
+      setPatient(overview.patient);
+      setAppointments(overview.appointments);
+      setLabResults(overview.labResults);
+      setOverviewVital(overview.latestVital);
     } catch (error) {
-      console.error("Error fetching patient data:", error);
+      logClientError("Patient portal overview fetch failed", error);
+      router.push("/patient-login");
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("patientToken");
-    localStorage.removeItem("patientId");
-    localStorage.removeItem("patientName");
+  React.useEffect(() => {
+    fetchPatientData();
+  }, [fetchPatientData]);
+
+  const handleLogout = async () => {
+    await fetch("/api/patient-auth/logout", {
+      method: "POST",
+    });
+
     toast.success("Logged out successfully");
     router.push("/patient-login");
   };
+
+  const displayedVital = latestVital ?? overviewVital;
 
   if (!patient) {
     return (
@@ -174,6 +160,84 @@ export default function PatientPortalPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardTitle>Live Vitals</CardTitle>
+                <CardDescription>
+                  Latest bedside readings streamed from your chart when available.
+                </CardDescription>
+              </div>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                  vitalsStatus === "live"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : vitalsStatus === "error"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-neutral-100 text-neutral-700"
+                }`}
+              >
+                {vitalsStatus === "live"
+                  ? "Live"
+                  : vitalsStatus === "error"
+                    ? "Reconnect needed"
+                    : "Waiting for stream"}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {displayedVital ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                    Blood Pressure
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {displayedVital.bloodPressureSystolic ?? "--"}/
+                    {displayedVital.bloodPressureDiastolic ?? "--"}
+                  </p>
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                    Heart Rate
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {displayedVital.heartRate ?? "--"} bpm
+                  </p>
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                    SpO2
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {displayedVital.spO2 ?? "--"}%
+                  </p>
+                </div>
+                <div className="rounded-xl border p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
+                    Temperature
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {displayedVital.temperature ?? "--"} C
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed p-6 text-sm text-neutral-500">
+                No vitals have been recorded for this account yet.
+              </div>
+            )}
+
+            {displayedVital ? (
+              <div className="mt-4 flex items-center gap-2 text-sm text-neutral-500">
+                <Activity className="h-4 w-4" />
+                Last updated {new Date(displayedVital.recordedAt).toLocaleString()}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
 
         {/* Appointments */}
         <Card className="mb-6">

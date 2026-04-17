@@ -1,9 +1,15 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
-import { createAuditLog } from "@/lib/audit";
-import { patientCreateSchema, patientUpdateSchema } from "@/lib/validations";
+import { getCurrentUserId, hasPermission } from "@/lib/auth";
+import { patientCreateSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
+import {
+  buildEncryptedEmergencyContactFields,
+  buildEncryptedPatientFields,
+  readPatientSensitiveFields,
+} from "@/lib/patient-sensitive";
 
 function mapPatientToResponse(p: {
   id: string;
@@ -26,21 +32,24 @@ function mapPatientToResponse(p: {
   mrn: string | null;
   createdAt: Date;
   updatedAt: Date;
+  sensitiveDataEncrypted?: string | null;
 }) {
+  const sensitive = readPatientSensitiveFields(p);
+
   return {
     id: p.id,
     firstName: p.firstName,
     lastName: p.lastName,
-    dob: p.dateOfBirth?.toISOString().split("T")[0] ?? "",
+    dob: sensitive.dateOfBirth?.toISOString().split("T")[0] ?? "",
     gender: p.gender ?? "Unknown",
     email: p.email ?? "",
     phone: p.phone ?? "",
-    phoneSecondary: p.phoneSecondary ?? "",
-    address: p.address ?? "",
-    city: p.city ?? "",
-    state: p.state ?? "",
-    zip: p.zip ?? "",
-    country: p.country ?? "",
+    phoneSecondary: sensitive.phoneSecondary ?? "",
+    address: sensitive.address ?? "",
+    city: sensitive.city ?? "",
+    state: sensitive.state ?? "",
+    zip: sensitive.zip ?? "",
+    country: sensitive.country ?? "",
     bloodType: p.bloodType ?? "Unknown",
     allergies: p.allergies ?? "None",
     primaryCareProvider: p.primaryCareProvider ?? "Unassigned",
@@ -63,7 +72,7 @@ export async function GET() {
 
     return NextResponse.json(patients.map(mapPatientToResponse));
   } catch (error) {
-    console.error("Error fetching patients:", error);
+    logServerError("Error fetching patients", error);
     return NextResponse.json(
       { error: "Failed to fetch patients" },
       { status: 500 },
@@ -76,6 +85,16 @@ export async function POST(request: Request) {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
     const userId = await getCurrentUserId(orgId);
+    const canWritePatients = await hasPermission(
+      userId,
+      orgId,
+      "patients:write",
+      "patients",
+    );
+
+    if (!canWritePatients) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const parsed = patientCreateSchema.safeParse(body);
@@ -88,37 +107,52 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
+    const sensitiveData = buildEncryptedPatientFields({
+      dateOfBirth: data.dateOfBirth ?? null,
+      phoneSecondary: data.phoneSecondary || null,
+      address: data.address || null,
+      city: data.city || null,
+      state: data.state || null,
+      zip: data.zip || null,
+      country: data.country || null,
+      familyHistory: data.familyHistory || null,
+    });
 
-    const newPatient = await prisma.$transaction(async (tx: any) => {
+    const newPatient = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const patient = await tx.patient.create({
         data: {
           organizationId: orgId,
           firstName: data.firstName,
           lastName: data.lastName,
-          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+          dateOfBirth: sensitiveData.dateOfBirth,
           gender: data.gender ?? null,
           email: data.email || null,
           phone: data.phone || null,
-          phoneSecondary: data.phoneSecondary || null,
-          address: data.address || null,
-          city: data.city || null,
-          state: data.state || null,
-          zip: data.zip || null,
-          country: data.country || null,
+          phoneSecondary: sensitiveData.phoneSecondary,
+          address: sensitiveData.address,
+          city: sensitiveData.city,
+          state: sensitiveData.state,
+          zip: sensitiveData.zip,
+          country: sensitiveData.country,
           bloodType: data.bloodType || null,
           allergies: data.allergies || null,
           primaryCareProvider: data.primaryCareProvider || null,
-          familyHistory: data.familyHistory || null,
+          familyHistory: sensitiveData.familyHistory,
+          sensitiveDataEncrypted: sensitiveData.sensitiveDataEncrypted,
         },
       });
 
       if (data.emergencyContactName || data.emergencyContactPhone) {
+        const encryptedContact = buildEncryptedEmergencyContactFields({
+          name: data.emergencyContactName ?? "Unknown",
+          phone: data.emergencyContactPhone ?? "",
+          relationship: data.emergencyContactRelationship ?? null,
+        });
         await tx.emergencyContact.create({
           data: {
             patientId: patient.id,
-            name: data.emergencyContactName ?? "Unknown",
-            phone: data.emergencyContactPhone ?? "",
-            relationship: data.emergencyContactRelationship ?? null,
+            ...encryptedContact,
           },
         });
       }
@@ -135,11 +169,12 @@ export async function POST(request: Request) {
       });
 
       return patient;
-    });
+      },
+    );
 
     return NextResponse.json(mapPatientToResponse(newPatient), { status: 201 });
   } catch (error) {
-    console.error("Error creating patient:", error);
+    logServerError("Error creating patient", error);
     return NextResponse.json(
       { error: "Failed to create patient" },
       { status: 500 },

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import { logClientError } from "@/lib/client-logger";
 
 interface AddCampaignDialogProps {
   onSuccess?: () => void;
@@ -58,7 +59,7 @@ export function AddCampaignDialog({ onSuccess }: AddCampaignDialogProps) {
       onSuccess?.();
     } catch (error) {
       toast.error("Failed to create campaign");
-      console.error(error);
+      logClientError("Create campaign failed", error);
     } finally {
       setLoading(false);
     }

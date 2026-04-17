@@ -21,6 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getClientErrorMessage, logClientError } from "@/lib/client-logger";
+
+type InvoiceOption = {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  total: number | string;
+  amountPaid?: number | string | null;
+};
 
 interface PaymentDialogProps {
   invoiceId?: string;
@@ -30,7 +39,7 @@ interface PaymentDialogProps {
 export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [invoices, setInvoices] = React.useState<any[]>([]);
+  const [invoices, setInvoices] = React.useState<InvoiceOption[]>([]);
   const [formData, setFormData] = React.useState({
     invoiceId: invoiceId || "",
     amount: "",
@@ -50,20 +59,24 @@ export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
       if (!response.ok) throw new Error("Failed to fetch invoices");
       const data = await response.json();
       // Filter for unpaid invoices
-      const unpaidInvoices = data.filter((inv: any) => inv.status !== "paid");
+      const unpaidInvoices = (data as InvoiceOption[]).filter(
+        (inv) => inv.status !== "paid",
+      );
       setInvoices(unpaidInvoices);
     } catch (error) {
       toast.error("Failed to load invoices");
-      console.error(error);
+      logClientError("Payment dialog invoice fetch failed", error);
     }
   };
 
   const getInvoiceAmount = () => {
     if (!formData.invoiceId) return "";
     const invoice = invoices.find((i) => i.id === formData.invoiceId);
-    return invoice
-      ? (invoice.total - (invoice.amountPaid || 0)).toFixed(2)
-      : "";
+    if (!invoice) return "";
+
+    const total = Number(invoice.total ?? 0);
+    const amountPaid = Number(invoice.amountPaid ?? 0);
+    return (total - amountPaid).toFixed(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,9 +121,9 @@ export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
       });
       setOpen(false);
       onSuccess?.();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to process payment");
-      console.error(error);
+    } catch (error) {
+      toast.error(getClientErrorMessage(error, "Failed to process payment"));
+      logClientError("Payment dialog submission failed", error);
     } finally {
       setLoading(false);
     }
@@ -151,7 +164,10 @@ export function PaymentDialog({ invoiceId, onSuccess }: PaymentDialogProps) {
                 {invoices.map((invoice) => (
                   <SelectItem key={invoice.id} value={invoice.id}>
                     {invoice.invoiceNumber} - $
-                    {(invoice.total - (invoice.amountPaid || 0)).toFixed(2)}
+                    {(
+                      Number(invoice.total ?? 0) -
+                      Number(invoice.amountPaid ?? 0)
+                    ).toFixed(2)}
                   </SelectItem>
                 ))}
               </SelectContent>

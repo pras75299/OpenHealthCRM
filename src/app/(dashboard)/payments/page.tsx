@@ -5,7 +5,6 @@ import {
   CreditCard,
   Filter as FilterIcon,
   Download,
-  Plus,
   DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,17 +18,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { PaymentDialog } from "@/components/billing/payment-dialog";
+import { logClientError } from "@/lib/client-logger";
 
 interface Payment {
   id: string;
   invoiceId: string;
   invoiceNumber: string;
   patientName: string;
-  amount: number;
+  amount: number | string;
   currency: string;
   status: string;
   createdAt: string;
+}
+
+function toAmount(value: number | string) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export default function PaymentsPage() {
@@ -51,7 +59,7 @@ export default function PaymentsPage() {
       setPayments(data);
     } catch (error) {
       toast.error("Failed to load payments");
-      console.error(error);
+      logClientError("Payments fetch failed", error);
     } finally {
       setLoading(false);
     }
@@ -70,7 +78,7 @@ export default function PaymentsPage() {
       ...payments.map((p) => [
         p.invoiceNumber,
         p.patientName,
-        p.amount.toFixed(2),
+        toAmount(p.amount).toFixed(2),
         p.currency.toUpperCase(),
         p.status,
         new Date(p.createdAt).toLocaleDateString(),
@@ -116,11 +124,11 @@ export default function PaymentsPage() {
 
   const totalRevenue = payments
     .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + toAmount(p.amount), 0);
 
   const pendingAmount = payments
     .filter((p) => p.status === "pending")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + toAmount(p.amount), 0);
 
   return (
     <div className="flex flex-col gap-6 w-full h-full">
@@ -285,7 +293,7 @@ export default function PaymentsPage() {
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: payment.currency,
-                        }).format(payment.amount)}
+                        }).format(toAmount(payment.amount))}
                       </p>
                     </td>
                     <td className="px-6 py-4">

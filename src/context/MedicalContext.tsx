@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { logClientError } from "@/lib/client-logger"
 
 export type Patient = {
   id: string
@@ -49,7 +50,6 @@ const MedicalContext = React.createContext<MedicalContextType | undefined>(undef
 export function MedicalProvider({ children }: { children: React.ReactNode }) {
   const [patients, setPatients] = React.useState<Patient[]>([])
   const [appointments, setAppointments] = React.useState<Appointment[]>([])
-  const [loading, setLoading] = React.useState(true)
 
   const fetchData = React.useCallback(async () => {
     try {
@@ -66,9 +66,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setAppointments(apptsData);
       }
     } catch (error) {
-      console.error("Failed to fetch initial data", error);
-    } finally {
-      setLoading(false);
+      logClientError("Initial medical data fetch failed", error);
     }
   }, []);
 
@@ -89,7 +87,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setPatients((prev) => [newPatient, ...prev])
       }
     } catch (error) {
-      console.error("Failed to add patient", error);
+      logClientError("Create patient from medical context failed", error);
     }
   }
 
@@ -105,7 +103,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setAppointments((prev) => [...prev, newApt])
       }
     } catch (error) {
-      console.error("Failed to add appointment", error);
+      logClientError("Create appointment from medical context failed", error);
     }
   }
 
@@ -121,7 +119,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
          setAppointments((prev) => prev.map(apt => apt.id === id ? { ...apt, ...updatedApt } : apt))
        }
     } catch (error) {
-       console.error("Failed to update appointment", error);
+       logClientError("Update appointment from medical context failed", error);
     }
   }
 
@@ -133,7 +131,7 @@ export function MedicalProvider({ children }: { children: React.ReactNode }) {
         setPatients(data);
       }
     } catch (error) {
-      console.error("Failed to refetch patients", error);
+      logClientError("Patient refetch failed", error);
     }
   }, []);
 

@@ -1,8 +1,10 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
 import { prescriptionSchema } from "@/lib/validations";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(prescriptions);
   } catch (error) {
-    console.error("Error fetching prescriptions:", error);
+    logServerError("Error fetching prescriptions", error);
     return NextResponse.json(
       { error: "Failed to fetch prescriptions" },
       { status: 500 },
@@ -38,7 +40,12 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "encounters:write", resource: "encounters" },
+      { action: "patients:write", resource: "patients" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, encounterId, ...rxData } = body;
@@ -76,7 +83,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const prescription = await prisma.$transaction(async (tx: any) => {
+    const prescription = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const rx = await tx.prescription.create({
         data: {
           organizationId: orgId,
@@ -104,11 +112,12 @@ export async function POST(request: Request) {
       });
 
       return rx;
-    });
+      },
+    );
 
     return NextResponse.json(prescription, { status: 201 });
   } catch (error) {
-    console.error("Error creating prescription:", error);
+    logServerError("Error creating prescription", error);
     return NextResponse.json(
       { error: "Failed to create prescription" },
       { status: 500 },

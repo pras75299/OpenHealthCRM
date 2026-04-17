@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUserId } from "@/lib/auth";
-import { getOrgId, assertOrgScope } from "@/lib/org";
 import { createAuditLog } from "@/lib/audit";
 import {
   sendSMS,
   sendEmail,
   sendWhatsApp,
-  renderAppointmentReminder,
 } from "@/lib/communications";
+import { logServerError } from "@/lib/safe-logger";
+
+type ScheduledCommunication = Prisma.CommunicationGetPayload<{
+  include: {
+    patient: true;
+  };
+}>;
 
 /**
  * CRON endpoint: Processes scheduled communications
@@ -42,9 +47,9 @@ export async function POST(request: NextRequest) {
     let sent = 0;
     let failed = 0;
 
-    for (const comm of scheduledComms) {
+    for (const comm of scheduledComms as ScheduledCommunication[]) {
       try {
-        const patient = comm.patient as any;
+        const patient = comm.patient;
 
         // Send based on channel
         if (comm.channel === "sms" && patient.phone) {
@@ -64,14 +69,38 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        await createAuditLog({
+          organizationId: comm.organizationId,
+          action: "UPDATE",
+          entityType: "Communication",
+          entityId: comm.id,
+          actorType: "system",
+          actorIdentifier: "cron:scheduled-communications",
+          beforeState: JSON.stringify({ status: comm.status }),
+          afterState: JSON.stringify({ status: "sent", sentAt: now }),
+        });
+
         sent++;
       } catch (error) {
-        console.error(`Failed to send communication ${comm.id}:`, error);
+        logServerError("Failed to send scheduled communication", error, {
+          communicationId: comm.id,
+        });
 
         // Mark as failed
         await prisma.communication.update({
           where: { id: comm.id },
           data: { status: "failed" },
+        });
+
+        await createAuditLog({
+          organizationId: comm.organizationId,
+          action: "UPDATE",
+          entityType: "Communication",
+          entityId: comm.id,
+          actorType: "system",
+          actorIdentifier: "cron:scheduled-communications",
+          beforeState: JSON.stringify({ status: comm.status }),
+          afterState: JSON.stringify({ status: "failed" }),
         });
 
         failed++;
@@ -86,7 +115,7 @@ export async function POST(request: NextRequest) {
       message: `Processed ${scheduledComms.length} scheduled communications`,
     });
   } catch (error) {
-    console.error("CRON error:", error);
+    logServerError("Scheduled communications CRON error", error);
     return NextResponse.json(
       { error: "Failed to process scheduled communications" },
       { status: 500 },

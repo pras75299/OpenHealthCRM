@@ -78,7 +78,7 @@ export function FullScreenCalendar({
   const [selectedDay, setSelectedDay] = React.useState(today);
   const [currentMonth, setCurrentMonth] = React.useState(format(today, "MMM-yyyy"));
   const firstDayCurrentMonth = parse(currentMonth, "MMM-yyyy", new Date());
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  useMediaQuery("(min-width: 1024px)");
   const data = React.useMemo(() => toCalendarData(events), [events]);
 
   const days = eachDayOfInterval({
@@ -253,7 +253,9 @@ export function FullScreenCalendar({
                               key={ev.id}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                calEv && onEventClick?.(calEv);
+                                if (calEv) {
+                                  onEventClick?.(calEv);
+                                }
                               }}
                               className="flex flex-col items-start gap-1 rounded-[5px] border bg-muted/50 p-2 text-xs leading-tight transition-all hover:bg-muted hover:border-primary/30 cursor-pointer"
                             >

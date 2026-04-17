@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 import {
   sendSMS,
   sendEmail,
   renderAppointmentReminder,
 } from "@/lib/communications";
+import { logServerError } from "@/lib/safe-logger";
+
+type ReminderAppointment = Prisma.AppointmentGetPayload<{
+  include: {
+    patient: true;
+    provider: true;
+  };
+}>;
 
 /**
  * CRON endpoint: Sends appointment reminders
@@ -38,9 +48,9 @@ export async function POST(request: NextRequest) {
       take: 100,
     });
 
-    for (const appointment of upcomingAppointments) {
-      const patient = appointment.patient as any;
-      const provider = appointment.provider as any;
+    for (const appointment of upcomingAppointments as ReminderAppointment[]) {
+      const patient = appointment.patient;
+      const provider = appointment.provider;
 
       // Check if reminder already sent (you might want to add a field to track this)
       // For now, we'll send reminders if communication doesn't exist
@@ -72,7 +82,7 @@ export async function POST(request: NextRequest) {
               status: "sent",
             });
           } catch (error) {
-            console.error("Failed to send SMS reminder:", error);
+            logServerError("Failed to send SMS reminder", error);
           }
         }
 
@@ -91,12 +101,12 @@ export async function POST(request: NextRequest) {
               status: "sent",
             });
           } catch (error) {
-            console.error("Failed to send email reminder:", error);
+            logServerError("Failed to send email reminder", error);
           }
         }
 
         // Log the reminder communication
-        await prisma.communication.create({
+        const communication = await prisma.communication.create({
           data: {
             organizationId: patient.organizationId,
             patientId: patient.id,
@@ -106,6 +116,22 @@ export async function POST(request: NextRequest) {
             content: `[APPOINTMENT_ID: ${appointment.id}]\n\n${messages.sms}`,
             sentAt: now,
           },
+        });
+
+        await createAuditLog({
+          organizationId: patient.organizationId,
+          action: "CREATE",
+          entityType: "Communication",
+          entityId: communication.id,
+          actorType: "system",
+          actorIdentifier: "cron:appointment-reminders",
+          afterState: JSON.stringify({
+            patientId: patient.id,
+            appointmentId: appointment.id,
+            channel: communication.channel,
+            type: communication.type,
+            status: communication.status,
+          }),
         });
       }
     }
@@ -117,7 +143,7 @@ export async function POST(request: NextRequest) {
       message: `Sent ${reminders.length} appointment reminders`,
     });
   } catch (error) {
-    console.error("Appointment reminder CRON error:", error);
+    logServerError("Appointment reminder CRON error", error);
     return NextResponse.json(
       { error: "Failed to send appointment reminders" },
       { status: 500 },

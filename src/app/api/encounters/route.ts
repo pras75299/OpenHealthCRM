@@ -1,7 +1,9 @@
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrgId, assertOrgScope } from "@/lib/org";
-import { getCurrentUserId } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/authorization";
+import { logServerError } from "@/lib/safe-logger";
 
 export async function GET(request: Request) {
   try {
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(encounters);
   } catch (error) {
-    console.error("Error fetching encounters:", error);
+    logServerError("Error fetching encounters", error);
     return NextResponse.json(
       { error: "Failed to fetch encounters" },
       { status: 500 },
@@ -38,7 +40,11 @@ export async function POST(request: Request) {
   try {
     const orgId = await getOrgId();
     assertOrgScope(orgId);
-    const userId = await getCurrentUserId(orgId);
+    const authz = await requireAnyPermission(orgId, [
+      { action: "encounters:write", resource: "encounters" },
+    ]);
+    if (authz.response) return authz.response;
+    const { userId } = authz;
 
     const body = await request.json();
     const { patientId, appointmentId, encounterType } = body;
@@ -57,7 +63,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    const encounter = await prisma.$transaction(async (tx: any) => {
+    const encounter = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
       const enc = await tx.encounter.create({
         data: {
           organizationId: orgId,
@@ -81,11 +88,12 @@ export async function POST(request: Request) {
       });
 
       return enc;
-    });
+      },
+    );
 
     return NextResponse.json(encounter, { status: 201 });
   } catch (error) {
-    console.error("Error creating encounter:", error);
+    logServerError("Error creating encounter", error);
     return NextResponse.json(
       { error: "Failed to create encounter" },
       { status: 500 },
