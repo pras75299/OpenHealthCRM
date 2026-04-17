@@ -13,6 +13,7 @@ services:
       NEXTAUTH_SECRET: change-me-before-production
       NEXTAUTH_URL: http://localhost:3000
       REDIS_URL: redis://redis:6379
+      SEED_DEMO_DATA: "true"
       PORT: 3000
       HOSTNAME: 0.0.0.0
     ports:
