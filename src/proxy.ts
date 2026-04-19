@@ -8,6 +8,9 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth",
   "/api/patient-auth",
   "/api/patient-portal",
+  "/api/vitals/stream",
+  "/api/communications/scheduled",
+  "/api/communications/appointment-reminders",
   "/api/webhooks/stripe",
 ];
 

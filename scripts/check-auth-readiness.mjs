@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
-require("dotenv").config();
-const { Pool } = require("pg");
-const { PrismaPg } = require("@prisma/adapter-pg");
-const { PrismaClient } = require("@prisma/client");
+import "dotenv/config";
+import pg from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+const { Pool } = pg;
 
 const REQUIRED_ENV_VARS = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 const DEMO_STAFF_EMAILS = [
@@ -125,7 +126,10 @@ async function main() {
     console.log("[ok] AuditLog table available");
 
     console.log("");
-    if (staffUsers.length !== DEMO_STAFF_EMAILS.length || patients.length !== DEMO_PATIENTS.length) {
+    if (
+      staffUsers.length !== DEMO_STAFF_EMAILS.length ||
+      patients.length !== DEMO_PATIENTS.length
+    ) {
       console.log("Result: demo accounts are not fully provisioned in this database.");
       console.log("Action: run `npm run db:seed` against this environment if demo logins should exist.");
       process.exitCode = 2;
