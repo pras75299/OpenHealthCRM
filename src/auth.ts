@@ -4,6 +4,41 @@ import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+function getLocalhostAwareAuthUrl() {
+  const configuredAuthUrl = process.env.NEXTAUTH_URL?.trim();
+
+  if (process.env.NODE_ENV === "production") {
+    return configuredAuthUrl;
+  }
+
+  const port = process.env.PORT?.trim() || "3000";
+
+  if (!configuredAuthUrl) {
+    return `http://localhost:${port}`;
+  }
+
+  try {
+    const parsedUrl = new URL(configuredAuthUrl);
+    const isLocalhost =
+      parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
+
+    if (isLocalhost && parsedUrl.port !== port) {
+      parsedUrl.port = port;
+      return parsedUrl.toString().replace(/\/$/, "");
+    }
+  } catch {
+    return configuredAuthUrl;
+  }
+
+  return configuredAuthUrl;
+}
+
+const resolvedAuthUrl = getLocalhostAwareAuthUrl();
+
+if (resolvedAuthUrl) {
+  process.env.NEXTAUTH_URL = resolvedAuthUrl;
+}
+
 type AuthenticatedUser = {
   id: string;
   email: string;

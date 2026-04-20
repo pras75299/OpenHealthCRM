@@ -20,6 +20,26 @@ const DEMO_PATIENTS = [
   { email: "priya.patel@example.com", mrn: "MRN-1005" },
 ];
 
+function getCanonicalAuthUrl() {
+  const nextAuthUrl = process.env.NEXTAUTH_URL?.trim() ?? "";
+  const vercelUrl = process.env.VERCEL_URL?.trim() ?? "";
+  const port = process.env.PORT?.trim() || "3000";
+
+  if (nextAuthUrl) {
+    return nextAuthUrl;
+  }
+
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return `http://localhost:${port}`;
+  }
+
+  return "";
+}
+
 function getStatusLabel(ok) {
   return ok ? "[ok]" : "[missing]";
 }
@@ -38,9 +58,7 @@ async function main() {
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL?.trim() ?? "";
-  const vercelUrl = process.env.VERCEL_URL?.trim() ?? "";
-  const canonicalAuthUrl =
-    nextAuthUrl || (vercelUrl ? `https://${vercelUrl}` : "");
+  const canonicalAuthUrl = getCanonicalAuthUrl();
   const canonicalAuthUrlLooksLive =
     canonicalAuthUrl.length > 0 &&
     !canonicalAuthUrl.includes("localhost") &&
@@ -48,13 +66,17 @@ async function main() {
 
   console.log(
     `${getWarningLabel(Boolean(canonicalAuthUrl))} Auth origin: ${
-      canonicalAuthUrl || "missing NEXTAUTH_URL and VERCEL_URL"
+      canonicalAuthUrl || "missing NEXTAUTH_URL or VERCEL_URL"
     }`,
   );
 
   if (nextAuthUrl) {
     console.log(
       `${getWarningLabel(canonicalAuthUrlLooksLive)} NEXTAUTH_URL value: ${nextAuthUrl}`,
+    );
+  } else if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[ok] Local auth origin inferred from PORT: http://localhost:${process.env.PORT?.trim() || "3000"}`,
     );
   }
 
@@ -136,7 +158,7 @@ async function main() {
       return;
     }
 
-    if (!canonicalAuthUrlLooksLive) {
+    if (process.env.NODE_ENV === "production" && !canonicalAuthUrlLooksLive) {
       console.log("Result: demo accounts exist, but the auth origin looks non-production.");
       console.log("Action: set NEXTAUTH_URL to the deployed HTTPS origin, or verify VERCEL_URL is present.");
       process.exitCode = 2;

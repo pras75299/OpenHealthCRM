@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
@@ -25,6 +26,7 @@ import {
   User,
   Users,
   Wallet,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +93,19 @@ const routeTitles: Record<string, string> = {
 
 interface DashboardWithCollapsibleSidebarProps {
   children: React.ReactNode;
+}
+
+function getLocalNavigationTarget(url: string | null | undefined, fallback: string) {
+  if (!url || typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const resolvedUrl = new URL(url, window.location.origin);
+    return `${resolvedUrl.pathname}${resolvedUrl.search}${resolvedUrl.hash}` || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function DashboardWithCollapsibleSidebar({
@@ -268,6 +283,7 @@ function DashboardHeader({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const title = useMemo(() => {
     if (routeTitles[pathname]) return routeTitles[pathname];
@@ -404,6 +420,22 @@ function DashboardHeader({
     }
 
     router.push("/patients");
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    const result = await signOut({
+      callbackUrl: "/login",
+      redirect: false,
+    });
+
+    router.push(getLocalNavigationTarget(result.url, "/login"));
+    router.refresh();
   };
 
   return (
@@ -561,7 +593,16 @@ function DashboardHeader({
                 <Link href="/help">Help</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">Log out</DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600"
+                disabled={isLoggingOut}
+                onSelect={() => {
+                  void handleLogout();
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                {isLoggingOut ? "Logging out..." : "Log out"}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

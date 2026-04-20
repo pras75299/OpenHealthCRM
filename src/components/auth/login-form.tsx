@@ -9,6 +9,19 @@ type LoginFormProps = {
   callbackUrl: string;
 };
 
+function getLocalNavigationTarget(url: string | null | undefined, fallback: string) {
+  if (!url || typeof window === "undefined") {
+    return fallback;
+  }
+
+  try {
+    const resolvedUrl = new URL(url, window.location.origin);
+    return `${resolvedUrl.pathname}${resolvedUrl.search}${resolvedUrl.hash}` || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function LoginForm({ callbackUrl }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -35,7 +48,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       return;
     }
 
-    router.push(result.url ?? callbackUrl);
+    router.push(getLocalNavigationTarget(result.url, callbackUrl));
     router.refresh();
   }
 

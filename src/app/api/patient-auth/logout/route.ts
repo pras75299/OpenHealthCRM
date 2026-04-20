@@ -6,11 +6,6 @@ import { logServerError } from "@/lib/safe-logger";
 export async function POST(request: Request) {
   try {
     const session = await revokePatientSessionFromRequest(request);
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const response = NextResponse.json({ success: true });
     response.cookies.set("patient_session", "", {
       httpOnly: true,
@@ -19,6 +14,10 @@ export async function POST(request: Request) {
       path: "/",
       expires: new Date(0),
     });
+
+    if (!session) {
+      return response;
+    }
 
     await createAuditLog({
       organizationId: session.patient.organizationId,
