@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 const FHIR_ID_PATTERN = /^[A-Za-z0-9.-]{1,64}$/;
+const PATIENT_REFERENCE_PATTERN = /^Patient\/([A-Za-z0-9.-]{1,64})$/;
+
+function getPatientReferenceId(value: string) {
+  return PATIENT_REFERENCE_PATTERN.exec(value)?.[1] ?? null;
+}
 
 const ALLOWED_FHIR_COLLECTIONS = {
   AllergyIntolerance: ["patient", "_count"],
@@ -34,8 +39,7 @@ function buildFhirUrl(pathSegments: string[], requestUrl: string) {
 }
 
 function isValidPatientReference(value: string) {
-  const [resourceType, id] = value.split("/");
-  return resourceType === "Patient" && Boolean(id) && FHIR_ID_PATTERN.test(id);
+  return getPatientReferenceId(value) !== null;
 }
 
 function validateFhirPath(path: string[], requestUrl: string) {
@@ -123,7 +127,7 @@ function getReferencedPatientIds(path: string[], requestUrl: string) {
 
   for (const key of ["patient", "subject"] as const) {
     for (const value of incomingUrl.searchParams.getAll(key)) {
-      const [, id] = value.split("/");
+      const id = getPatientReferenceId(value);
       if (id) {
         ids.add(id);
       }

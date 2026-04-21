@@ -22,10 +22,14 @@ type ScheduledCommunication = Prisma.CommunicationGetPayload<{
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify CRON secret (optional during development)
-    const secret = request.headers.get("x-cron-secret");
     const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && secret !== cronSecret) {
+    if (!cronSecret) {
+      return NextResponse.json(
+        { error: "CRON_SECRET is not configured" },
+        { status: 503 },
+      );
+    }
+    if (request.headers.get("x-cron-secret") !== cronSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

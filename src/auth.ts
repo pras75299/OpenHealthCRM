@@ -24,7 +24,10 @@ function getLocalhostAwareAuthUrl() {
 
     if (isLocalhost && parsedUrl.port !== port) {
       parsedUrl.port = port;
-      return parsedUrl.toString().replace(/\/$/, "");
+      const normalized = parsedUrl.toString();
+      return parsedUrl.pathname === "/"
+        ? normalized.replace(/\/$/, "")
+        : normalized;
     }
   } catch {
     return configuredAuthUrl;

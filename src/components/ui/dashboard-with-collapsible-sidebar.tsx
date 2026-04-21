@@ -39,6 +39,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useMedical } from "@/context/MedicalContext";
+import { getLocalNavigationTarget } from "@/lib/redirects";
+import { logClientError } from "@/lib/client-logger";
+import { toast } from "sonner";
 
 const navGroups = [
   {
@@ -93,19 +96,6 @@ const routeTitles: Record<string, string> = {
 
 interface DashboardWithCollapsibleSidebarProps {
   children: React.ReactNode;
-}
-
-function getLocalNavigationTarget(url: string | null | undefined, fallback: string) {
-  if (!url || typeof window === "undefined") {
-    return fallback;
-  }
-
-  try {
-    const resolvedUrl = new URL(url, window.location.origin);
-    return `${resolvedUrl.pathname}${resolvedUrl.search}${resolvedUrl.hash}` || fallback;
-  } catch {
-    return fallback;
-  }
 }
 
 export function DashboardWithCollapsibleSidebar({
@@ -427,15 +417,22 @@ function DashboardHeader({
       return;
     }
 
-    setIsLoggingOut(true);
+    try {
+      setIsLoggingOut(true);
 
-    const result = await signOut({
-      callbackUrl: "/login",
-      redirect: false,
-    });
+      const result = await signOut({
+        callbackUrl: "/login",
+        redirect: false,
+      });
 
-    router.push(getLocalNavigationTarget(result.url, "/login"));
-    router.refresh();
+      router.push(getLocalNavigationTarget(result?.url, "/login"));
+      router.refresh();
+    } catch (error) {
+      logClientError("Staff logout failed", error);
+      toast.error("Unable to log out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
