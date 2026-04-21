@@ -37,6 +37,7 @@ export default function PatientPortalPage() {
   const [labResults, setLabResults] = React.useState<Array<{ id: string; testName: string; resultValue: string | null; unit: string | null; status: string }>>([]);
   const [overviewVital, setOverviewVital] = React.useState<VitalSnapshot | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const router = useRouter();
   const { latestVital, status: vitalsStatus } = useVitalsStream(patient?.id);
 
@@ -67,12 +68,30 @@ export default function PatientPortalPage() {
   }, [fetchPatientData]);
 
   const handleLogout = async () => {
-    await fetch("/api/patient-auth/logout", {
-      method: "POST",
-    });
+    if (isLoggingOut) {
+      return;
+    }
 
-    toast.success("Logged out successfully");
-    router.push("/patient-login");
+    try {
+      setIsLoggingOut(true);
+
+      const response = await fetch("/api/patient-auth/logout", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+
+      toast.success("Logged out successfully");
+      router.push("/patient-login");
+      router.refresh();
+    } catch (error) {
+      logClientError("Patient logout failed", error);
+      toast.error("Unable to log out. Please try again.");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const displayedVital = latestVital ?? overviewVital;
@@ -101,9 +120,10 @@ export default function PatientPortalPage() {
           <Button
             variant="outline"
             onClick={handleLogout}
+            disabled={isLoggingOut}
             className="flex items-center gap-2"
           >
-            <LogOut className="w-4 h-4" /> Logout
+            <LogOut className="w-4 h-4" /> {isLoggingOut ? "Logging out..." : "Logout"}
           </Button>
         </div>
       </div>

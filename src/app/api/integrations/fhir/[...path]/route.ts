@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { requireOrgContext, isAuthContextError } from "@/lib/org";
 import { hasPermission } from "@/lib/auth";
 import { logServerError } from "@/lib/safe-logger";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 const FHIR_ID_PATTERN = /^[A-Za-z0-9.-]{1,64}$/;
+const PATIENT_REFERENCE_PATTERN = /^Patient\/([A-Za-z0-9.-]{1,64})$/;
+
+function getPatientReferenceId(value: string) {
+  return PATIENT_REFERENCE_PATTERN.exec(value)?.[1] ?? null;
+}
 
 const ALLOWED_FHIR_COLLECTIONS = {
   AllergyIntolerance: ["patient", "_count"],
@@ -33,8 +39,7 @@ function buildFhirUrl(pathSegments: string[], requestUrl: string) {
 }
 
 function isValidPatientReference(value: string) {
-  const [resourceType, id] = value.split("/");
-  return resourceType === "Patient" && Boolean(id) && FHIR_ID_PATTERN.test(id);
+  return getPatientReferenceId(value) !== null;
 }
 
 function validateFhirPath(path: string[], requestUrl: string) {
@@ -110,6 +115,51 @@ function validateFhirPath(path: string[], requestUrl: string) {
   return null;
 }
 
+function getReferencedPatientIds(path: string[], requestUrl: string) {
+  const [resourceType, resourceId] = path;
+
+  if (resourceType === "Patient" && resourceId) {
+    return [resourceId];
+  }
+
+  const incomingUrl = new URL(requestUrl);
+  const ids = new Set<string>();
+
+  for (const key of ["patient", "subject"] as const) {
+    for (const value of incomingUrl.searchParams.getAll(key)) {
+      const id = getPatientReferenceId(value);
+      if (id) {
+        ids.add(id);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
+async function ensurePatientsBelongToOrganization(
+  patientIds: string[],
+  organizationId: string,
+) {
+  if (patientIds.length === 0) {
+    return null;
+  }
+
+  const patients = await prisma.patient.findMany({
+    where: {
+      id: { in: patientIds },
+      organizationId,
+    },
+    select: { id: true },
+  });
+
+  if (patients.length !== patientIds.length) {
+    return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+  }
+
+  return null;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ path: string[] }> },
@@ -146,6 +196,14 @@ export async function GET(
         { error: validationError.error },
         { status: validationError.status },
       );
+    }
+
+    const patientAccessError = await ensurePatientsBelongToOrganization(
+      getReferencedPatientIds(path, request.url),
+      organizationId,
+    );
+    if (patientAccessError) {
+      return patientAccessError;
     }
 
     const response = await fetch(buildFhirUrl(path, request.url), {

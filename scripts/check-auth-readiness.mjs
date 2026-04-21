@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
-require("dotenv").config();
-const { Pool } = require("pg");
-const { PrismaPg } = require("@prisma/adapter-pg");
-const { PrismaClient } = require("@prisma/client");
+import "dotenv/config";
+import pg from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+
+const { Pool } = pg;
 
 const REQUIRED_ENV_VARS = ["DATABASE_URL", "NEXTAUTH_SECRET"];
 const DEMO_STAFF_EMAILS = [
@@ -18,6 +19,26 @@ const DEMO_PATIENTS = [
   { email: "marcus.lee@example.com", mrn: "MRN-1004" },
   { email: "priya.patel@example.com", mrn: "MRN-1005" },
 ];
+
+function getCanonicalAuthUrl() {
+  const nextAuthUrl = process.env.NEXTAUTH_URL?.trim() ?? "";
+  const vercelUrl = process.env.VERCEL_URL?.trim() ?? "";
+  const port = process.env.PORT?.trim() || "3000";
+
+  if (nextAuthUrl) {
+    return nextAuthUrl;
+  }
+
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return `http://localhost:${port}`;
+  }
+
+  return "";
+}
 
 function getStatusLabel(ok) {
   return ok ? "[ok]" : "[missing]";
@@ -37,9 +58,7 @@ async function main() {
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL?.trim() ?? "";
-  const vercelUrl = process.env.VERCEL_URL?.trim() ?? "";
-  const canonicalAuthUrl =
-    nextAuthUrl || (vercelUrl ? `https://${vercelUrl}` : "");
+  const canonicalAuthUrl = getCanonicalAuthUrl();
   const canonicalAuthUrlLooksLive =
     canonicalAuthUrl.length > 0 &&
     !canonicalAuthUrl.includes("localhost") &&
@@ -47,13 +66,17 @@ async function main() {
 
   console.log(
     `${getWarningLabel(Boolean(canonicalAuthUrl))} Auth origin: ${
-      canonicalAuthUrl || "missing NEXTAUTH_URL and VERCEL_URL"
+      canonicalAuthUrl || "missing NEXTAUTH_URL or VERCEL_URL"
     }`,
   );
 
   if (nextAuthUrl) {
     console.log(
       `${getWarningLabel(canonicalAuthUrlLooksLive)} NEXTAUTH_URL value: ${nextAuthUrl}`,
+    );
+  } else if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[ok] Local auth origin inferred from PORT: http://localhost:${process.env.PORT?.trim() || "3000"}`,
     );
   }
 
@@ -125,14 +148,17 @@ async function main() {
     console.log("[ok] AuditLog table available");
 
     console.log("");
-    if (staffUsers.length !== DEMO_STAFF_EMAILS.length || patients.length !== DEMO_PATIENTS.length) {
+    if (
+      staffUsers.length !== DEMO_STAFF_EMAILS.length ||
+      patients.length !== DEMO_PATIENTS.length
+    ) {
       console.log("Result: demo accounts are not fully provisioned in this database.");
       console.log("Action: run `npm run db:seed` against this environment if demo logins should exist.");
       process.exitCode = 2;
       return;
     }
 
-    if (!canonicalAuthUrlLooksLive) {
+    if (process.env.NODE_ENV === "production" && !canonicalAuthUrlLooksLive) {
       console.log("Result: demo accounts exist, but the auth origin looks non-production.");
       console.log("Action: set NEXTAUTH_URL to the deployed HTTPS origin, or verify VERCEL_URL is present.");
       process.exitCode = 2;

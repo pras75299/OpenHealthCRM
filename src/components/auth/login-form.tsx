@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Activity, ArrowRight, ShieldPlus, Stethoscope, TimerReset } from "lucide-react";
+import { getLocalNavigationTarget } from "@/lib/redirects";
 
 type LoginFormProps = {
   callbackUrl: string;
@@ -35,7 +36,7 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       return;
     }
 
-    router.push(result.url ?? callbackUrl);
+    router.push(getLocalNavigationTarget(result.url, callbackUrl));
     router.refresh();
   }
 
