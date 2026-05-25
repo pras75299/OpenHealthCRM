@@ -10,6 +10,12 @@ type LoginFormProps = {
   callbackUrl: string;
 };
 
+const demoStaffLogins = [
+  { email: "admin@acmeclinic.com", password: "admin123" },
+  { email: "ops@acmeclinic.com", password: "admin123" },
+  { email: "billing@acmeclinic.com", password: "admin123" },
+];
+
 export function LoginForm({ callbackUrl }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -156,6 +162,32 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Session mode</span>
                 <span className="font-medium text-foreground">Credential-based</span>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[24px] border border-cyan-100 bg-cyan-50/70 p-4 text-sm shadow-sm shadow-cyan-950/5 dark:border-cyan-400/15 dark:bg-cyan-400/8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-foreground">Demo staff logins</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Local testing accounts from the demo seed.
+                  </p>
+                </div>
+                <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-cyan-800 shadow-sm dark:bg-white/10 dark:text-cyan-200">
+                  Dev only
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                {demoStaffLogins.map((login) => (
+                  <div
+                    className="grid gap-1 rounded-[16px] bg-white/72 px-3 py-2.5 text-xs dark:bg-white/[0.04] sm:grid-cols-[1fr_auto] sm:items-center sm:gap-3"
+                    key={login.email}
+                  >
+                    <span className="font-medium text-foreground">{login.email}</span>
+                    <span className="font-mono text-muted-foreground">{login.password}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
