@@ -81,12 +81,13 @@ Required for normal local usage:
 
 - `DATABASE_URL`: PostgreSQL connection string used by Prisma
 - `NEXTAUTH_SECRET`: secret used to sign Auth.js JWTs and session data
-- `NEXTAUTH_URL`: canonical application URL such as `http://localhost:3000`
 
 Optional:
 
+- `NEXTAUTH_URL`: canonical application URL. In local dev this can be left unset and the app will infer `http://localhost:$PORT`. If you set it manually, keep it aligned with the port you run on.
 - `REDIS_URL`: Redis connection string for queue-oriented future work
 - `WS_URL`: external realtime endpoint for future websocket-style clients
+- `SEED_DEMO_DATA`: set to `true` only when you intentionally want the demo seed users/data provisioned at app startup
 - `ENCRYPTION_KEY`: application-layer encryption key for sensitive patient/contact fields
 - `FHIR_BASE_URL`: base URL for an upstream FHIR R4 server
 - `FHIR_AUTH_TOKEN`: optional bearer token for the upstream FHIR server
@@ -123,6 +124,12 @@ Patient portal logins:
 
 These credentials are for local testing only.
 
+Production note:
+
+- `npx prisma migrate deploy` only applies schema changes. It does not create the demo users above.
+- Docker startup now seeds demo data only when `SEED_DEMO_DATA=true`.
+- On hosted production deployments, run `npm run db:seed` once against the production database only if you intentionally want the demo accounts available.
+
 ## Verification
 
 Useful project checks:
@@ -130,6 +137,7 @@ Useful project checks:
 ```bash
 npm run lint
 npm run typecheck
+npm run auth:check
 npx prisma validate --schema prisma/schema.prisma
 SKIP_DB_INIT=true npm run build
 ```

@@ -52,10 +52,13 @@ npm audit fix --force
 
 ```bash
 # Apply pending migrations
-npm run db:migrate
+npm run db:migrate:deploy
 
-# Optional: Seed initial data
+# Optional: Seed demo data if you want the sample logins to work
 npm run db:seed
+
+# Verify auth env + demo accounts
+npm run auth:check
 ```
 
 ## 🧪 Testing (30 minutes)
@@ -92,6 +95,7 @@ vercel deploy --prod
 # - All TWILIO_* variables
 # - STRIPE_SECRET_KEY
 # - NEXTAUTH_SECRET & NEXTAUTH_URL
+# - SEED_DEMO_DATA=true only for demo/test deployments
 # - CRON_SECRET
 # - DATABASE_URL
 ```
@@ -104,6 +108,7 @@ docker build -t healthcare-crm .
 # Run container
 docker run -p 3000:3000 \
   -e DATABASE_URL="..." \
+  -e SEED_DEMO_DATA="true" \
   -e TWILIO_ACCOUNT_SID="..." \
   healthcare-crm
 ```
@@ -215,4 +220,3 @@ npm run build --analyze
 ✅ No critical errors in logs  
 
 **Estimated total time: 2-4 hours from start to live production**
-
